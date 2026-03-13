@@ -1037,6 +1037,15 @@ class AviatorGame {
         this.saveBetHistory();
 
         // Sync cashout with backend via WebSocket
+        console.log('[CASHOUT] Checking sync conditions:', {
+            gameSocket: !!window.gameSocket,
+            connected: window.gameSocket?.connected,
+            jetbetAPI: !!window.JetBetAPI,
+            authenticated: window.JetBetAPI?.isAuthenticated(),
+            betApiId: bet.apiId,
+            userId: this.currentUser?.username || JetBetAPI.currentUser?.username
+        });
+        
         if (window.gameSocket && gameSocket.connected && window.JetBetAPI && JetBetAPI.isAuthenticated() && bet.apiId) {
             // Get userId from game.currentUser (where it's actually stored)
             const userId = this.currentUser?.username || JetBetAPI.currentUser?.username;
@@ -1079,6 +1088,20 @@ class AviatorGame {
                     gameCurrentUser: this.currentUser,
                     apiCurrentUser: JetBetAPI.currentUser
                 });
+            }
+        } else {
+            console.warn('[CASHOUT] Backend sync skipped - conditions not met. Using local cashout only.');
+            
+            // Update local balance immediately when backend sync fails
+            this.playerBalance += winnings;
+            this.updateBalance();
+            
+            // Update localStorage
+            const userData = localStorage.getItem('userData');
+            if (userData) {
+                const user = JSON.parse(userData);
+                user.balance = this.playerBalance;
+                localStorage.setItem('userData', JSON.stringify(user));
             }
         }
 
