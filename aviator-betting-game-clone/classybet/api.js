@@ -1,7 +1,7 @@
 // JetBet API Service
 class JetBetAPI {
     constructor() {
-        const productionURL = 'https://aviator-casino.onrender.com';
+        const productionURL = 'https://jetbet-m26i.onrender.com';
         const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         this.baseURL = isLocalhost ? 'http://localhost:3001' : productionURL;
         this.apiPath = '/api';
@@ -349,5 +349,5 @@ class JetBetAPI {
     }
 }
 
-// Global API instance
-window.JetBetAPI = new JetBetAPI();
+// Global API instance - use a different name to avoid conflict with class name
+window.jetbetAPI = new JetBetAPI();

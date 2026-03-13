@@ -9,8 +9,8 @@ async function fetchRoundSchedule() {
     this.roundSyncInProgress = true;
 
     try {
-        const baseURL = window.JetBetAPI ? JetBetAPI.baseURL : API_BASE;
-        const token = window.JetBetAPI ? JetBetAPI.token : localStorage.getItem('user_token');
+        const baseURL = window.jetbetAPI ? jetbetAPI.baseURL : API_BASE;
+        const token = window.jetbetAPI ? jetbetAPI.token : localStorage.getItem('user_token');
         const headers = {};
         if (token) {
             headers['Authorization'] = `Bearer ${token}`;
@@ -117,8 +117,8 @@ async function ensureRoundMeta() {
         }
 
         // Set game round for betting
-        if (window.JetBetAPI && typeof JetBetAPI.setGameRound === 'function' && JetBetAPI.isAuthenticated()) {
-            await JetBetAPI.setGameRound(this.activeRoundMeta.roundId);
+        if (window.jetbetAPI && typeof jetbetAPI.setGameRound === 'function' && jetbetAPI.isAuthenticated()) {
+            await jetbetAPI.setGameRound(this.activeRoundMeta.roundId);
             // ❌ REMOVED: Round ID console log (security)
         }
         

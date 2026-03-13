@@ -1127,8 +1127,11 @@
         // Global API_BASE for paystack-payment.js
         const API_BASE = (() => {
             const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            return isLocalhost ? 'http://localhost:3001' : 'https://aviator-casino.onrender.com';
+            return isLocalhost ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
         })();
+
+        // Use global instance
+        const api = window.jetbetAPI;
 
         // Helper function to close modal
         function closeModal(modalId) {
@@ -1523,7 +1526,7 @@
             // Track deposit tab click
             const token = localStorage.getItem('user_token');
             const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-            const apiBase = isLocalhost ? 'http://localhost:3001' : 'https://aviator-casino.onrender.com';
+            const apiBase = isLocalhost ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
 
             if (token) {
                 fetch(`${apiBase}/api/payments/deposit-tab-click`, {

@@ -1,7 +1,7 @@
 // Global API configuration
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'
-    : 'https://aviator-casino.onrender.com';
+    : 'https://jetbet-m26i.onrender.com';
 
 // Game State Management
 class AviatorGame {
@@ -1194,7 +1194,7 @@ class AviatorGame {
             const isLocal = window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
                 window.location.protocol === 'file:';
-            const apiBase = isLocal ? 'http://localhost:3001' : 'https://aviator-casino.onrender.com';
+            const apiBase = isLocal ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
 
             const response = await fetch(`${apiBase}/api/game/bet-history`, {
                 headers: {
@@ -3116,7 +3116,7 @@ let game;
 async function initializeWebSocket() {
     const API_BASE_URL = window.location.hostname === 'localhost'
         ? 'http://localhost:3001'
-        : 'https://aviator-casino.onrender.com';
+        : 'https://jetbet-m26i.onrender.com';
 
     try {
         console.log('[WebSocket] Connecting to:', API_BASE_URL);
@@ -3198,7 +3198,7 @@ async function checkAuthenticationOnLoad() {
                     const isLocal = window.location.hostname === 'localhost' ||
                         window.location.hostname === '127.0.0.1' ||
                         window.location.protocol === 'file:';
-                    const apiBase = isLocal ? 'http://localhost:3001' : 'https://aviator-casino.onrender.com';
+                    const apiBase = isLocal ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
                     console.log('Profile API Base URL:', apiBase);
                     const response = await fetch(`${apiBase}/api/auth/profile`, {
                         headers: {
@@ -3312,7 +3312,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // Initialize authentication system
-            window.JetBetAPI = new JetBetAPI();
+            // Use the global instance created in api.js
             setupAuthEventListeners();
 
             // Initialize WebSocket connection
@@ -3340,7 +3340,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Authentication Event Listeners
 function setupAuthEventListeners() {
     // Set up API event listeners
-    JetBetAPI.on('onAuthChange', (data) => {
+    jetbetAPI.on('onAuthChange', (data) => {
         if (data.authenticated) {
             showUserView();
             updateUserDisplay(data.user);
@@ -3350,11 +3350,11 @@ function setupAuthEventListeners() {
         }
     });
 
-    JetBetAPI.on('onBalanceUpdate', (balance) => {
+    jetbetAPI.on('onBalanceUpdate', (balance) => {
         updateBalanceDisplay(balance);
     });
 
-    JetBetAPI.on('onBetUpdate', (data) => {
+    jetbetAPI.on('onBetUpdate', (data) => {
         updateBetDisplay(data);
     });
 }
@@ -3649,13 +3649,13 @@ document.getElementById('deposit-form').addEventListener('submit', async (e) => 
         instructionsSection.style.display = 'block';
     }
 
-    const result = await JetBetAPI.depositSTK(amount, phoneNumber);
+    const result = await jetbetAPI.depositSTK(amount, phoneNumber);
 
     // Keep local API instance in sync with latest user data after deposit attempt
     const latestUserData = localStorage.getItem('userData');
     if (latestUserData) {
         try {
-            JetBetAPI.user = JSON.parse(latestUserData);
+            jetbetAPI.user = JSON.parse(latestUserData);
         } catch (error) {
             console.error('Failed to parse user data after deposit attempt:', error);
         }
@@ -3722,7 +3722,7 @@ if (depositBtn) {
 const profileBtn = document.getElementById('profile-btn');
 if (profileBtn) {
     profileBtn.addEventListener('click', () => {
-        if (!JetBetAPI.isAuthenticated()) {
+        if (!jetbetAPI.isAuthenticated()) {
             window.location.href = '/';
             return;
         }
@@ -3743,7 +3743,7 @@ if (adminBtn) {
         const isLocal = window.location.hostname === 'localhost' ||
             window.location.hostname === '127.0.0.1' ||
             window.location.protocol === 'file:';
-        const adminUrl = isLocal ? 'http://localhost:3001/admin' : 'https://aviator-casino.onrender.com/admin';
+        const adminUrl = isLocal ? 'http://localhost:3001/admin' : 'https://jetbet-m26i.onrender.com/admin';
         console.log('Admin URL:', adminUrl);
         window.open(adminUrl, '_blank');
     });
