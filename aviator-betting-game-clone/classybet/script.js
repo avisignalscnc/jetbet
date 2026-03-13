@@ -1036,78 +1036,8 @@ class AviatorGame {
         // Save the updated bet history
         this.saveBetHistory();
 
-        // Sync cashout with backend via WebSocket
-        console.log('[CASHOUT] Checking sync conditions:', {
-            gameSocket: !!window.gameSocket,
-            connected: window.gameSocket?.connected,
-            jetbetAPI: !!window.JetBetAPI,
-            authenticated: window.JetBetAPI?.isAuthenticated(),
-            betApiId: bet.apiId,
-            userId: this.currentUser?.username || JetBetAPI.currentUser?.username
-        });
-        
-        if (window.gameSocket && gameSocket.connected && window.JetBetAPI && JetBetAPI.isAuthenticated() && bet.apiId) {
-            // Get userId from game.currentUser (where it's actually stored)
-            const userId = this.currentUser?.username || JetBetAPI.currentUser?.username;
-            if (userId) {
-                console.log('[CASHOUT] Requesting cashout via WebSocket:', {
-                    userId,
-                    betId: bet.apiId,
-                    multiplier: this.counter
-                });
-
-                gameSocket.cashout(userId, bet.apiId, this.counter)
-                    .then(result => {
-                        console.log('[CASHOUT] Response received:', result);
-                        if (result && result.success) {
-                            if (result.newBalance !== undefined) {
-                                this.playerBalance = result.newBalance;
-
-                                // Update localStorage to persist the balance
-                                const userData = localStorage.getItem('userData');
-                                if (userData) {
-                                    const user = JSON.parse(userData);
-                                    user.balance = result.newBalance;
-                                    localStorage.setItem('userData', JSON.stringify(user));
-                                }
-
-                                this.updateBalance();
-                                console.log('[CASHOUT] ✅ Balance updated from backend:', result.newBalance);
-                            } else {
-                                console.warn('[CASHOUT] ⚠️ Success but no newBalance in response:', result);
-                            }
-                        } else {
-                            console.error('[CASHOUT] ❌ Cashout failed:', result);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('[CASHOUT] ❌ Failed to sync with backend:', error);
-                    });
-            } else {
-                console.error('[CASHOUT] No user ID available', {
-                    gameCurrentUser: this.currentUser,
-                    apiCurrentUser: JetBetAPI.currentUser
-                });
-            }
-        } else {
-            console.warn('[CASHOUT] Backend sync skipped - conditions not met. Using local cashout only.');
-            
-            // Update local balance immediately when backend sync fails
-            this.playerBalance += winnings;
-            this.updateBalance();
-            
-            // Update localStorage and mark as having local wins
-            const userData = localStorage.getItem('userData');
-            if (userData) {
-                const user = JSON.parse(userData);
-                user.balance = this.playerBalance;
-                user.hasLocalWins = true; // Flag to indicate we have local wins to preserve
-                user.lastLocalWinTime = Date.now(); // Track when the win occurred
-                localStorage.setItem('userData', JSON.stringify(user));
-            }
-            
-            console.log('[CASHOUT] Local balance updated with winnings:', this.playerBalance);
-        }
+        // Immediately update backend balance with cashout winnings
+        this.updateBackendBalance(winnings, 'cashout');
 
         this.addBetToHistory({
             amount: bet.amount,
@@ -1126,6 +1056,62 @@ class AviatorGame {
         setTimeout(() => {
             this.resetBetAfterPayout(betType);
         }, 1200);
+    }
+
+    // New method to immediately update backend balance
+    async updateBackendBalance(amount, reason) {
+        try {
+            const newBalance = this.playerBalance + amount;
+            const userData = localStorage.getItem('userData');
+            
+            if (!userData) {
+                console.warn('[BACKEND] No user data found for backend sync');
+                return;
+            }
+
+            const user = JSON.parse(userData);
+            const token = user.token;
+
+            if (!token) {
+                console.warn('[BACKEND] No auth token found for backend sync');
+                return;
+            }
+
+            // Update local balance first
+            this.playerBalance = newBalance;
+            this.updateBalance();
+
+            // Update localStorage
+            user.balance = newBalance;
+            localStorage.setItem('userData', JSON.stringify(user));
+
+            // Sync with backend via record-transaction API
+            const API_BASE = 'https://jetbet-m26i.onrender.com';
+            const response = await fetch(`${API_BASE}/api/game/record-transaction`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: reason === 'cashout' ? 'win' : 'other',
+                    amount: Math.abs(amount),
+                    newBalance: newBalance,
+                    description: `Aviator Game: ${reason}`,
+                    game: 'aviator',
+                    userId: user._id || user.username
+                })
+            });
+
+            if (response.ok) {
+                console.log(`[BACKEND] ✅ Balance synced to backend: ${newBalance} (${reason})`);
+            } else {
+                console.error('[BACKEND] ❌ Failed to sync balance to backend:', response.status);
+            }
+
+        } catch (error) {
+            console.error('[BACKEND] ❌ Error syncing balance:', error);
+        }
     }
 
     async activateQueuedBets() {
@@ -2213,49 +2199,15 @@ class AviatorGame {
         this.activeRoundMeta = null;
         this.forcedCrashMultiplier = null;
 
-        // End round on backend if authenticated and sync balance
+        // End round on backend if authenticated
         if (window.JetBetAPI && typeof JetBetAPI.endRound === 'function' && JetBetAPI.isAuthenticated()) {
             JetBetAPI.endRound(crashMultiplier)
                 .then(result => {
                     if (result && result.success && result.data && result.data.newBalance !== undefined) {
-                        const currentLocalBalance = this.playerBalance;
-                        const backendBalance = result.data.newBalance;
-                        
-                        // Check if we have local wins that should be preserved
-                        const userData = localStorage.getItem('userData');
-                        let hasLocalWins = false;
-                        
-                        if (userData) {
-                            const user = JSON.parse(userData);
-                            hasLocalWins = user.hasLocalWins || false;
-                            
-                            // Clear the local wins flag after checking (it's one-time use)
-                            if (hasLocalWins) {
-                                user.hasLocalWins = false;
-                                localStorage.setItem('userData', JSON.stringify(user));
-                            }
-                        }
-                        
-                        // Always preserve local balance if it's higher or we have local wins
-                        if (currentLocalBalance > backendBalance || hasLocalWins) {
-                            console.log('[BALANCE] Preserving local balance:', {
-                                local: currentLocalBalance,
-                                backend: backendBalance,
-                                hasLocalWins: hasLocalWins
-                            });
-                            
-                            // Update localStorage with preserved balance
-                            if (userData) {
-                                const user = JSON.parse(userData);
-                                user.balance = currentLocalBalance;
-                                localStorage.setItem('userData', JSON.stringify(user));
-                            }
-                        } else {
-                            // Update game balance from backend
-                            this.playerBalance = backendBalance;
-                            this.updateBalance();
-                            console.log('[BALANCE] Updated from backend:', backendBalance);
-                        }
+                        // Update game balance from backend (should match our local balance now)
+                        this.playerBalance = result.data.newBalance;
+                        this.updateBalance();
+                        console.log('[BALANCE] Balance confirmed from backend:', result.data.newBalance);
                     }
                 })
                 .catch(error => {
