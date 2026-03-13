@@ -1,0 +1,2141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AviSignals Predictor Access</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        input, textarea {
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0b0d17 0%, #10152b 50%, #020305 100%);
+            color: #fff;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body.game-active-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%) !important;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .landing-wrapper {
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 40px 24px;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            background: rgba(15, 20, 32, 0.85);
+            border: 1px solid rgba(241, 196, 15, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        .landing-logo {
+            font-size: 2.2em;
+            color: #f1c40f;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .landing-subtitle {
+            font-size: 1em;
+            margin-bottom: 20px;
+            color: #c4c9d4;
+            opacity: 0.85;
+        }
+        
+        /* Betting Sites Section */
+        .betting-sites {
+            width: 100%;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .betting-sites h3 {
+            color: #f1c40f;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .site-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin: 0 auto;
+            max-width: 400px;
+        }
+        
+        .site-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 15px;
+            background: rgba(241, 196, 15, 0.1);
+            border: 1px solid rgba(241, 196, 15, 0.2);
+            border-radius: 10px;
+            color: #f1c40f;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .site-button:hover {
+            background: rgba(241, 196, 15, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(241, 196, 15, 0.15);
+        }
+        
+        .site-icon {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+        }
+
+        .landing-video {
+            margin-bottom: 30px;
+        }
+
+        .landing-video video {
+            width: 100%;
+            border-radius: 12px;
+            border: 1px solid rgba(241, 196, 15, 0.15);
+        }
+
+        .cta-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin: 30px 0;
+        }
+
+        .cta-button {
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.05em;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.3s ease, background 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .cta-button.primary {
+            background: linear-gradient(135deg, #ff4747 0%, #ff6b6b 100%);
+            color: #fff;
+            box-shadow: 0 12px 25px rgba(255, 71, 71, 0.35);
+        }
+
+        .cta-button.primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 18px 30px rgba(255, 71, 71, 0.4);
+        }
+
+        .cta-button.secondary {
+            background: rgba(24, 27, 39, 0.9);
+            color: #f1c40f;
+            border: 1px solid rgba(241, 196, 15, 0.35);
+        }
+
+        .cta-button.secondary:hover {
+            background: rgba(241, 196, 15, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .cta-button.disabled {
+            background: rgba(91, 97, 112, 0.4);
+            border: 1px solid rgba(91, 97, 112, 0.6);
+            color: #99a0b2;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .info-card {
+            background: rgba(12, 16, 27, 0.8);
+            border-radius: 14px;
+            padding: 16px 18px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-top: 24px;
+        }
+
+        .info-card h4 {
+            margin-bottom: 10px;
+            color: #f1c40f;
+        }
+
+        .info-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-card li {
+            margin-bottom: 6px;
+            color: #d0d6e3;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .landing-footer {
+            margin-top: 28px;
+            color: rgba(210, 218, 235, 0.75);
+            font-size: 0.85em;
+        }
+
+        .landing-footer a {
+            color: #f1c40f;
+            text-decoration: none;
+        }
+
+        .token-input-area {
+            margin-top: 24px;
+            background: rgba(17, 23, 37, 0.85);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: left;
+        }
+
+        .token-input-area label {
+            display: block;
+            color: #c4c9d4;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .token-input-area input {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(11, 14, 24, 0.9);
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .token-input-area input:focus {
+            outline: none;
+            border-color: #ff6b6b;
+            box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.25);
+        }
+
+        .token-input-area button {
+            margin-top: 14px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #3b8dff 0%, #6c63ff 100%);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.3s ease;
+        }
+
+        .token-input-area button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(59, 141, 255, 0.35);
+        }
+
+        .token-feedback {
+            margin-top: 12px;
+            font-size: 0.9em;
+        }
+
+        .token-feedback.token-error {
+            color: #ff7474;
+        }
+
+        .token-feedback.token-success {
+            color: #1dd1a1;
+        }
+
+        .session-status {
+            margin-top: 20px;
+            font-size: 0.95em;
+            color: #dfe4f0;
+            background: rgba(13, 18, 30, 0.7);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: none;
+        }
+
+        .session-status.active {
+            display: block;
+        }
+
+        .session-status strong {
+            color: #f1c40f;
+        }
+
+        .admin-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 22px;
+            font-size: 0.9em;
+            color: rgba(145, 152, 170, 0.8);
+            cursor: pointer;
+        }
+
+        .admin-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(3, 4, 8, 0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .admin-panel.active {
+            display: flex;
+        }
+
+        .admin-content {
+            width: 90%;
+            max-width: 780px;
+            background: rgba(10, 15, 25, 0.95);
+            border-radius: 18px;
+            padding: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .admin-content h2 {
+            margin-bottom: 10px;
+        }
+
+        .admin-content p {
+            margin-bottom: 20px;
+            color: #9aa5c4;
+        }
+
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .admin-table thead {
+            background: rgba(30, 37, 55, 0.9);
+        }
+
+        .admin-table th, .admin-table td {
+            padding: 14px 16px;
+            text-align: left;
+            font-size: 0.92em;
+        }
+
+        .admin-table tbody tr:nth-child(even) {
+            background: rgba(18, 24, 38, 0.85);
+        }
+
+        .admin-table tbody tr:nth-child(odd) {
+            background: rgba(12, 18, 30, 0.85);
+        }
+
+        .admin-table td .token-label {
+            font-family: 'Courier New', monospace;
+            color: #f1c40f;
+        }
+
+        .close-admin {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+
+        .admin-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 16px;
+            padding: 10px 14px;
+            background: rgba(241, 196, 15, 0.08);
+            border-radius: 10px;
+            border: 1px solid rgba(241, 196, 15, 0.24);
+            color: #f1c40f;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(4, 6, 14, 0.92);
+            z-index: 1500;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-dialog {
+            width: 90%;
+            max-width: 420px;
+            background: rgba(12, 18, 32, 0.95);
+            border-radius: 18px;
+            border: 1px solid rgba(241, 196, 15, 0.12);
+            padding: 28px 24px;
+            position: relative;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+            text-align: center;
+        }
+
+        .modal-dialog h3 {
+            color: #f1c40f;
+            font-size: 1.3em;
+        }
+
+        .modal-dialog p {
+            color: #c4c9d4;
+            margin-top: 12px;
+            font-size: 0.95em;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: rgba(241, 196, 15, 0.12);
+            color: #f1c40f;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            background: rgba(241, 196, 15, 0.2);
+        }
+
+        .site-options {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .site-button {
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(241, 196, 15, 0.15);
+            background: rgba(24, 32, 52, 0.9);
+            color: #f1c40f;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .site-button:hover {
+            transform: translateY(-2px);
+            background: rgba(241, 196, 15, 0.12);
+            box-shadow: 0 12px 25px rgba(241, 196, 15, 0.18);
+        }
+
+        .loading-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .loading-spinner {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 4px solid rgba(241, 196, 15, 0.18);
+            border-top-color: #f1c40f;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .continue-button {
+            margin-top: 24px;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ff4747 0%, #ff6b6b 100%);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .continue-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 28px rgba(255, 71, 71, 0.35);
+        }
+
+        .link-highlight {
+            color: #6c9bff;
+            text-decoration: underline;
+        }
+
+        /* Game Modal - Same as bot.html */
+        .game-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        body.game-active-mode .game-modal {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100vh !important;
+            z-index: 1000 !important;
+            background: transparent !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            padding: 20px !important;
+            box-sizing: border-box !important;
+        }
+
+        .game-container {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            border: 2px solid #e74c3c;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 50px rgba(231,76,60,0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 500px;
+            max-height: 90vh;
+            position: relative;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        body.game-active-mode .game-container {
+            width: 100% !important;
+            max-width: 500px !important;
+            margin-top: 0 !important;
+            position: relative !important;
+        }
+
+        .game-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            min-height: fit-content;
+        }
+
+        .plane-container {
+            margin: 30px 0;
+            position: relative;
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .plane-icon {
+            font-size: 120px;
+            color: #e74c3c;
+            animation: planeFloat 3s ease-in-out infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .plane-icon img {
+            width: 150px;
+            height: auto;
+            border-radius: 8px;
+            animation: planeFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes planeFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .game-status {
+            font-size: 1.8em;
+            margin: 20px 0;
+            color: #f1c40f;
+            font-weight: bold;
+        }
+
+        .round-info {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            width: 100%;
+        }
+
+        .prediction-display {
+            font-size: 2.5em;
+            color: #00ff88;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(0,255,136,0.5);
+            margin: 15px 0;
+            transition: all 0.3s ease;
+            font-family: 'Courier New', monospace;
+        }
+
+        .prediction-blurred {
+            filter: blur(3px);
+            color: #666;
+            text-shadow: none;
+        }
+
+        .multiplier-animating {
+            animation: multiplierPulse 0.8s ease-in-out;
+            color: #f1c40f !important;
+            text-shadow: 0 0 30px rgba(241, 196, 15, 0.8) !important;
+        }
+
+        .multiplier-final {
+            animation: multiplierGlow 1s ease-in-out;
+            color: #00ff88 !important;
+            text-shadow: 0 0 25px rgba(0, 255, 136, 0.6) !important;
+        }
+
+        .round-counter {
+            font-size: 1.1em;
+            color: #ccc;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .round-timer {
+            font-size: 0.9em;
+            color: #f39c12;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        @keyframes multiplierPulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes multiplierGlow {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes countUp {
+            0% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .game-action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .game-start-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            border-radius: 8px;
+            padding: 12px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+        
+        .game-start-btn:hover {
+            background: #c0392b;
+        }
+
+        .game-start-btn:disabled {
+            background: #666;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .game-refresh-btn {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f1c40f;
+            border: 1px solid rgba(241, 196, 15, 0.4);
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .game-refresh-btn:hover {
+            background: rgba(241, 196, 15, 0.18);
+            border-color: #f1c40f;
+        }
+
+        .game-refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .close-game {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 1.2em;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .close-game:hover {
+            background: #c0392b;
+        }
+
+        .bot-footer {
+            width: 100%;
+            margin-top: auto;
+            padding: 18px;
+            text-align: center;
+            opacity: 0.9;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.2);
+            border-radius: 0 0 18px 18px;
+        }
+
+        .bot-footer a {
+            color: #f1c40f;
+            text-decoration: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Mobile responsiveness */
+        @media screen and (max-width: 768px) {
+            .dev-setup {
+                max-width: 90%;
+                padding: 20px;
+            }
+
+            .time-selector {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .game-container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .plane-icon {
+                font-size: 80px;
+            }
+
+            .prediction-display {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="landing-wrapper" id="landingWrapper">
+        <div class="landing-logo">AviSignals Predictor</div>
+        <p class="landing-subtitle">Premium Aviator multiplier intelligence synced with live game rounds.</p>
+        
+        <!-- Betting Site Links -->
+        <div class="betting-sites">
+            <h3>Quick Access to Betting Sites</h3>
+            <div class="site-buttons">
+                <a href="https://1xbet.com" target="_blank" class="site-button">
+                    <img src="https://1xbet.com/bundles/1xbet/favicons/favicon-32x32.png" alt="1xBet" class="site-icon">
+                    <span>1xBet</span>
+                </a>
+                <a href="https://melbet.com" target="_blank" class="site-button">
+                    <img src="https://melbet.com/favicon.ico" alt="Melbet" class="site-icon">
+                    <span>Melbet</span>
+                </a>
+                <a href="https://1win.com" target="_blank" class="site-button">
+                    <img src="https://1win.com/favicon.ico" alt="1win" class="site-icon">
+                    <span>1win</span>
+                </a>
+                <a href="https://pin-up.ua" target="_blank" class="site-button">
+                    <img src="https://pin-up.ua/favicon.ico" alt="Pin-Up" class="site-icon">
+                    <span>Pin-Up</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="landing-video">
+            <h2>Bot Tutorial_see how the bot works.</h2>
+            <video controls preload="metadata">
+                <source src="Bot%20Tutorial%20JetBet.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+
+        <div class="cta-grid">
+            <button class="cta-button primary" id="freeTrialBtn"><i class="fas fa-rocket"></i>Start Free Trial (2 min)</button>
+            <button class="cta-button secondary" id="getTokenBtn"><i class="fas fa-shopping-cart"></i>Buy Token</button>
+            <button class="cta-button secondary" id="toggleTokenBtn"><i class="fas fa-key"></i>Activate Bot with Token</button>
+        </div>
+
+        <div class="token-input-area hidden" id="tokenActivationArea">
+            <label for="tokenInput">Enter your access token</label>
+            <input type="text" id="tokenInput" placeholder="e.g. AVS-7M-9F8A">
+            <button id="activateTokenBtn"><i class="fas fa-unlock"></i> Activate Token</button>
+            <div class="token-feedback" id="tokenFeedback"></div>
+        </div>
+
+        <div class="session-status" id="sessionStatus"></div>
+        <button class="cta-button primary hidden" id="rejoinSessionBtn">
+            <i class="fas fa-redo"></i>Rejoin Active Session
+        </button>
+
+        <div class="info-card">
+            <h4>How access works</h4>
+            <ul>
+                <li><i class="fas fa-check-circle"></i>First-time visitors unlock a 2-minute live session instantly on JetBet Aviator. Create an account before starting the trial if you don't have one.</li>
+                <li><i class="fas fa-check-circle"></i>Premium tokens extend live access for paying members. Get token directly from our store by clicking Buy Token.</li>
+                <li><i class="fas fa-check-circle"></i>The Predictor works in all our supported betting sites(1win, Betika, Betway,Sportybet etc)select from our main website.</li>
+                <li><i class="fas fa-check-circle"></i>All sessions stay synced with the AviSignals public round calendar generated from your selected betting site.</li>
+            </ul>
+        </div>
+
+        <div class="landing-footer">
+            Need help? <a href="https://avisignals.com" target="_blank" rel="noopener">Visit avisignals.com</a> or <a href="https://wa.me/254770659460" target="_blank" rel="noopener">chat on WhatsApp</a>.
+        </div>
+
+        <div class="admin-link" id="openAdminLink">
+            <i class="fas fa-user-shield"></i> Bot token admin
+        </div>
+    </div>
+
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-content">
+            <button class="close-admin" id="closeAdminBtn">&times;</button>
+            <h2>Token Access Panel</h2>
+            <p>Reference active AviSignals tokens. Reset statuses after issuing fresh codes.</p>
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Access Tier</th>
+                        <th>Duration</th>
+                        <th>Token ID</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTokenTable"></tbody>
+            </table>
+            <button class="admin-cta" id="resetTokensBtn">
+                <i class="fas fa-sync-alt"></i> Reset token statuses
+            </button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="siteSelectionModal">
+        <div class="modal-dialog">
+            <button class="modal-close" data-close-modal="site">&times;</button>
+            <div id="siteSelectionStep">
+                <h3>Select your betting site</h3>
+                <p id="siteSelectionNote">Choose the betting site you want to use with AviSignals.</p>
+                <div class="site-options">
+                    <button class="site-button" data-site="Betika">Betika</button>
+                    <button class="site-button" data-site="1win">1win</button>
+                    <button class="site-button" data-site="JetBet">JetBet</button>
+                    <button class="site-button" data-site="1xbet">1xbet</button>
+                    <button class="site-button" data-site="Sportybet">Sportybet</button>
+                    <button class="site-button" data-site="Betway">Betway</button>
+                    <button class="site-button" data-site="Sportpesa">Sportpesa</button>
+                    <button class="site-button" data-site="Hollywoodbets">Hollywoodbets</button>
+                    <button class="site-button" data-site="Premierbet">Premierbet</button>
+                    <button class="site-button" data-site="Odibets">Odibets</button>
+                    <button class="site-button" data-site="MozzartBet">MozzartBet</button>
+                    <button class="site-button" data-site="Mostbet">Mostbet</button>
+                </div>
+            </div>
+            <div id="freeTrialInfoStep" class="hidden">
+                <p>The 2-minute free trial is currently only available on JetBet Aviator.</p>
+                <p>Sign up here: <a class="link-highlight" href="https://jetbetaviator.com/?ref=AVISIGNAL" target="_blank" rel="noopener">JetBet Aviator Sign Up</a></p>
+                <button class="continue-button" id="freeTrialContinueBtn">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="loadingModal">
+        <div class="modal-dialog">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 id="loadingTitle">Connecting...</h3>
+                <p id="loadingMessage">Hold on while we connect to your selected betting site.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Modal -->
+    <div class="game-modal" id="gameModal">
+        <div class="game-container">
+            <button class="close-game" onclick="closeGame()">×</button>
+            
+            <div class="game-content">
+                <button class="close-game" onclick="closeGame()">&times;</button>
+                <h1>avisignals.com</h1>
+                <h2 style="color:#f1c40f;margin-bottom:20px;">Aviator Predictor Bot - Live</h2>
+                <div class="plane-container">
+                    <div class="plane-icon"><img src="aviator_jogo.png" alt="Aviator Game"></div>
+                </div>
+                <div class="game-status" id="gameStatus">Spribe Bot - Environment</div>
+                <div class="round-info">
+                    <div class="round-counter" id="roundCounter">Room 1</div>
+                    <div id="roundStatus" style="font-size:1.4em;margin-bottom:10px;">Waiting for next round...</div>
+                    <div class="prediction-display prediction-blurred" id="predictionDisplay">8.45x</div>
+                    <div class="round-timer" id="roundTimer"></div>
+                    <div class="game-action-buttons">
+                        <button class="game-start-btn" id="gameStartBtn" onclick="showNextPrediction()">Start Bot</button>
+                        <button class="game-refresh-btn" id="refreshBotBtn" onclick="refreshBotSync()">
+                            <i class="fas fa-sync"></i> Refresh Sync
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="bot-footer">
+                <span>Need help? Read the <a href="https://avisignals.com">guide</a> above. </span>
+                <a href="https://avisignals.com">Go to main channel</a>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const ROUND_API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3001'
+            : 'https://aviator-casino.onrender.com';
+        const ROUND_POLL_INTERVAL_MS = 7000;
+        const ROUND_FAILURE_THRESHOLD = 3;
+        let ROUND_DURATION_MS = 30000; // Default 30s, will be fetched from backend
+        const SHORT_COUNTDOWN_MIN_MS = 2000;
+        const SHORT_COUNTDOWN_MAX_MS = 5000;
+
+        const TOKEN_STORAGE_KEY = 'avisignals_token_states_v1';
+        const SESSION_STORAGE_KEY = 'avisignals_session_state_v1';
+        const FREE_TRIAL_KEY = 'avisignals_free_trial_used';
+        const LANDING_WHATSAPP_LINK = 'https://wa.me/254770659460';
+        const TOKEN_PURCHASE_URL = 'https://selar.com/m/jordan-baker1294382';
+        const ADMIN_PASSWORD = 'thecnccompanybet';
+
+        const PRESET_TOKENS = [
+            { tier: 'Free Trial', durationMinutes: 2, id: 'AVS-TRIAL-200J', reusable: false },
+            { tier: '7 Minutes', durationMinutes: 7, id: 'AVS-7M-59BJ', reusable: false },
+            { tier: '15 Minutes', durationMinutes: 15, id: 'AVS-15M-41BJ', reusable: false },
+            { tier: '30 Minutes', durationMinutes: 30, id: 'AVS-30M-77DJ', reusable: false },
+            { tier: '1 Hour', durationMinutes: 60, id: 'AVS-1H-F28J', reusable: false },
+            { tier: '12 Hours', durationMinutes: 720, id: 'AVS-12H-6DBJ', reusable: false },
+            { tier: '24 Hours', durationMinutes: 1440, id: 'AVS-24H-2E1J', reusable: false }
+        ];
+
+        function readTokenStates() {
+            try {
+                const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+                if (!raw) {
+                    return {};
+                }
+                return JSON.parse(raw);
+            } catch (error) {
+                console.error('Failed to read token cache:', error);
+                return {};
+            }
+        }
+
+        function writeTokenStates(states) {
+            try {
+                localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(states));
+            } catch (error) {
+                console.error('Failed to persist token cache:', error);
+            }
+        }
+
+        function getSessionState() {
+            try {
+                const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+                if (!raw) {
+                    return null;
+                }
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.expiry) {
+                    return null;
+                }
+                return parsed;
+            } catch (error) {
+                console.error('Failed to read session state:', error);
+                return null;
+            }
+        }
+
+        function setSessionState(session) {
+            try {
+                localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+            } catch (error) {
+                console.error('Failed to persist session state:', error);
+            }
+        }
+
+        function clearSessionState() {
+            localStorage.removeItem(SESSION_STORAGE_KEY);
+        }
+
+        function createDefaultConfig() {
+            return {
+                predictions: [],
+                currentIndex: 0,
+                duration: 60, // minutes
+                startTime: null,
+                isActive: false,
+                isRoundActive: false,
+                roundStartTime: null,
+                sessionState: 'waiting',
+                roundQueue: [],
+                usingApi: false,
+                seenRoundIds: new Set(),
+                currentRoundMeta: null,
+                roundPollInterval: null,
+                roundFetchInFlight: false,
+                roundMetadata: [],
+                manualPredictions: [],
+                serverTimeOffset: 0,
+                nextRoundStartTime: null,
+                roundCountdownInterval: null,
+                lastServerTime: null,
+                roundFetchFailures: 0,
+                sessionTimerInterval: null
+            };
+        }
+
+        let devConfig = createDefaultConfig();
+
+        let adminUnlocked = false;
+
+        function formatMultiplier(value) {
+            const numeric = Number(value);
+            if (Number.isNaN(numeric)) {
+                return '1.00x';
+            }
+            return numeric.toFixed(2) + 'x';
+        }
+
+        async function fetchRoundSchedule(limit = 50) {
+            try {
+                const response = await fetch(`${ROUND_API_BASE}/api/rounds/state?limit=${limit}`);
+                if (!response.ok) {
+                    return null;
+                }
+                const payload = await response.json();
+                const rounds = [];
+                if (payload.nextRound) {
+                    rounds.push(payload.nextRound);
+                }
+                if (Array.isArray(payload.upcoming)) {
+                    payload.upcoming.forEach(item => rounds.push(item));
+                }
+                return {
+                    rounds,
+                    currentRound: payload.currentRound || null,
+                    serverTime: payload.serverTime || null
+                };
+            } catch (error) {
+                console.error('Failed to fetch round schedule:', error);
+                return null;
+            }
+        }
+
+        function normaliseRoundEntry(round) {
+            if (!round || round.roundId == null || !round.startTime) {
+                return null;
+            }
+
+            const roundId = Number(round.roundId);
+            const startTimeMs = new Date(round.startTime).getTime();
+            if (Number.isNaN(roundId) || Number.isNaN(startTimeMs)) {
+                return null;
+            }
+
+            const multiplierValue = Number(round.multiplier);
+
+            return {
+                roundId,
+                startTime: startTimeMs,
+                multiplier: Number.isNaN(multiplierValue) ? null : multiplierValue
+            };
+        }
+
+        function ensurePredictionSlot(index) {
+            while (devConfig.predictions.length <= index) {
+                devConfig.predictions.push('?.??x');
+            }
+            if (!devConfig.predictions[index]) {
+                devConfig.predictions[index] = '?.??x';
+            }
+        }
+
+        function stopRoundCountdown() {
+            if (devConfig.roundCountdownInterval) {
+                clearInterval(devConfig.roundCountdownInterval);
+                devConfig.roundCountdownInterval = null;
+            }
+        }
+
+        function updateRoundCountdown() {
+            if (!devConfig.usingApi || !devConfig.nextRoundStartTime) {
+                return;
+            }
+
+            const roundTimer = document.getElementById('roundTimer');
+            const serverNow = Date.now() + devConfig.serverTimeOffset;
+            const diff = devConfig.nextRoundStartTime - serverNow;
+
+            if (!roundTimer) {
+                return;
+            }
+
+            if (diff <= 0) {
+                roundTimer.textContent = 'Round starting...';
+                return;
+            }
+
+            const totalSeconds = Math.floor(diff / 1000);
+            const centiseconds = Math.floor((diff % 1000) / 10);
+            roundTimer.textContent = `Next round in ${totalSeconds.toString().padStart(2, '0')}.${centiseconds
+                .toString()
+                .padStart(2, '0')}s`;
+        }
+
+        function startRoundCountdown() {
+            if (!devConfig.usingApi || !devConfig.nextRoundStartTime) {
+                return;
+            }
+
+            stopRoundCountdown();
+            updateRoundCountdown();
+            devConfig.roundCountdownInterval = setInterval(updateRoundCountdown, 500);
+        }
+
+        function updateNextRoundStartTime() {
+            if (!devConfig.usingApi) {
+                return;
+            }
+
+            const nextEntry = devConfig.roundQueue.length > 0 ? devConfig.roundQueue[0] : null;
+            if (nextEntry) {
+                const serverNow = Date.now() + devConfig.serverTimeOffset;
+                let diff = nextEntry.startTime - serverNow;
+                if (!Number.isFinite(diff)) {
+                    diff = SHORT_COUNTDOWN_MIN_MS;
+                }
+                diff = Math.max(SHORT_COUNTDOWN_MIN_MS, Math.min(SHORT_COUNTDOWN_MAX_MS, diff));
+                devConfig.nextRoundStartTime = serverNow + diff;
+                startRoundCountdown();
+            } else {
+                devConfig.nextRoundStartTime = null;
+                stopRoundCountdown();
+                const roundTimer = document.getElementById('roundTimer');
+                if (roundTimer) {
+                    roundTimer.textContent = 'Waiting for schedule...';
+                }
+            }
+        }
+
+        async function refreshRoundQueue(initial = false) {
+            if (!devConfig.usingApi) {
+                return;
+            }
+
+            if (devConfig.roundFetchInFlight) {
+                return;
+            }
+
+            devConfig.roundFetchInFlight = true;
+            const result = await fetchRoundSchedule();
+            devConfig.roundFetchInFlight = false;
+
+            if (!result || !Array.isArray(result.rounds)) {
+                devConfig.roundFetchFailures += 1;
+                if (devConfig.roundFetchFailures >= ROUND_FAILURE_THRESHOLD) {
+                    console.warn('Switching to manual predictions - round API unavailable');
+                    stopRoundCountdown();
+                    stopRoundPolling();
+                    devConfig.usingApi = false;
+                    const roundStatus = document.getElementById('roundStatus');
+                    if (roundStatus) {
+                        roundStatus.textContent = 'Using manual predictions';
+                    }
+                }
+                return;
+            }
+
+            devConfig.roundFetchFailures = 0;
+
+            if (result.serverTime) {
+                const serverTimeMs = new Date(result.serverTime).getTime();
+                if (!Number.isNaN(serverTimeMs)) {
+                    devConfig.lastServerTime = serverTimeMs;
+                    devConfig.serverTimeOffset = serverTimeMs - Date.now();
+                }
+            }
+
+            const upcoming = [];
+            const nowServer = Date.now() + devConfig.serverTimeOffset;
+
+            result.rounds.forEach((round) => {
+                const entry = normaliseRoundEntry(round);
+                if (!entry) {
+                    return;
+                }
+                if (entry.startTime < nowServer - ROUND_DURATION_MS) {
+                    return;
+                }
+                if (devConfig.seenRoundIds.has(entry.roundId)) {
+                    return;
+                }
+                upcoming.push(entry);
+            });
+
+            upcoming.sort((a, b) => a.startTime - b.startTime);
+
+            if (upcoming.length === 0 && !devConfig.roundQueue.length) {
+                const roundStatus = document.getElementById('roundStatus');
+                if (roundStatus) {
+                    roundStatus.textContent = 'Waiting for next round data...';
+                }
+                updateNextRoundStartTime();
+                return;
+            }
+
+            if (upcoming.length > 0) {
+                devConfig.roundQueue = upcoming;
+                upcoming.forEach((entry) => {
+                    const exists = devConfig.roundMetadata.find((meta) => meta.roundId === entry.roundId);
+                    if (!exists) {
+                        devConfig.roundMetadata.push(entry);
+                    }
+                });
+
+                ensurePredictionSlot(devConfig.roundMetadata.length - 1);
+                updateNextRoundStartTime();
+
+                const roundStatus = document.getElementById('roundStatus');
+                if (roundStatus) {
+                    roundStatus.textContent = initial ? 'Synced with live rounds' : 'Round data updated';
+                }
+            }
+        }
+
+        function startRoundPolling() {
+            if (!devConfig.usingApi) {
+                return;
+            }
+
+            stopRoundPolling();
+            devConfig.roundFetchFailures = 0;
+            refreshRoundQueue(true);
+            devConfig.roundPollInterval = setInterval(() => refreshRoundQueue(false), ROUND_POLL_INTERVAL_MS);
+        }
+
+        function stopRoundPolling() {
+            if (devConfig.roundPollInterval) {
+                clearInterval(devConfig.roundPollInterval);
+                devConfig.roundPollInterval = null;
+            }
+        }
+
+        function hasUsedFreeTrial() {
+            return localStorage.getItem(FREE_TRIAL_KEY) === 'true';
+        }
+
+        function markFreeTrialUsed() {
+            localStorage.setItem(FREE_TRIAL_KEY, 'true');
+        }
+
+        function getTokenDefinitionById(tokenId) {
+            return PRESET_TOKENS.find((token) => token.id.toLowerCase() === tokenId.toLowerCase());
+        }
+
+        function markTokenUsed(tokenId) {
+            const states = readTokenStates();
+            states[tokenId] = { usedAt: Date.now() };
+            writeTokenStates(states);
+        }
+
+        function isTokenUsed(tokenId) {
+            const states = readTokenStates();
+            return Boolean(states[tokenId]);
+        }
+
+        function resetTokenStates() {
+            localStorage.removeItem(TOKEN_STORAGE_KEY);
+        }
+
+        function updateAdminTable() {
+            const tableBody = document.getElementById('adminTokenTable');
+            const states = readTokenStates();
+            tableBody.innerHTML = PRESET_TOKENS.map((token) => {
+                const used = states[token.id];
+                const status = used ? `Used (${new Date(used.usedAt).toLocaleString()})` : 'Available';
+                return `
+                    <tr>
+                        <td>${token.tier}</td>
+                        <td>${token.durationMinutes} minutes</td>
+                        <td><span class="token-label">${token.id}</span></td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openAdminPanel() {
+            if (!adminUnlocked) {
+                const input = prompt('Enter admin password');
+                if (input !== ADMIN_PASSWORD) {
+                    alert('Access denied');
+                    return;
+                }
+                adminUnlocked = true;
+            }
+            updateAdminTable();
+            document.getElementById('adminPanel').classList.add('active');
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminPanel').classList.remove('active');
+        }
+
+        function getRemainingSessionTime() {
+            const session = getSessionState();
+            if (!session) return 0;
+            const diff = session.expiry - Date.now();
+            return Math.max(0, diff);
+        }
+
+        function formatDuration(ms) {
+            if (ms <= 0) {
+                return 'Expired';
+            }
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${seconds}s`;
+            }
+            if (minutes > 0) {
+                return `${minutes}m ${seconds}s`;
+            }
+            return `${seconds}s`;
+        }
+
+        function showSessionStatus(message, isActive = false) {
+            const statusEl = document.getElementById('sessionStatus');
+            if (!statusEl) return;
+            statusEl.textContent = message;
+            if (isActive) {
+                statusEl.classList.add('active');
+            } else {
+                statusEl.classList.remove('active');
+            }
+        }
+
+        function updateSessionCountdown() {
+            const remaining = getRemainingSessionTime();
+            const formatted = formatDuration(remaining);
+            const roundTimer = document.getElementById('roundTimer');
+
+            if (remaining <= 0) {
+                showSessionStatus('Session expired. Enter a valid token to continue.');
+                if (roundTimer) {
+                    roundTimer.textContent = 'Session expired';
+                }
+                const sessionInterval = devConfig.sessionTimerInterval;
+                clearSessionState();
+                if (sessionInterval) {
+                    clearInterval(sessionInterval);
+                    devConfig.sessionTimerInterval = null;
+                }
+                closeGame();
+                return false;
+            }
+
+            showSessionStatus(`Active session: ${formatted} remaining`, true);
+            if (roundTimer) {
+                roundTimer.textContent = `Active for: ${formatted}`;
+            }
+            return true;
+        }
+
+        function ensureSessionTimer() {
+            if (devConfig.sessionTimerInterval) {
+                clearInterval(devConfig.sessionTimerInterval);
+            }
+            if (updateSessionCountdown()) {
+                devConfig.sessionTimerInterval = setInterval(() => {
+                    if (!updateSessionCountdown()) {
+                        clearInterval(devConfig.sessionTimerInterval);
+                        devConfig.sessionTimerInterval = null;
+                    }
+                }, 1000);
+            }
+        }
+
+        function enableSession(durationMinutes, reason) {
+            const now = Date.now();
+            const expiry = now + durationMinutes * 60 * 1000;
+            setSessionState({ startedAt: now, expiry, reason });
+            if (devConfig.sessionTimerInterval) {
+                clearInterval(devConfig.sessionTimerInterval);
+                devConfig.sessionTimerInterval = null;
+            }
+            updateSessionCountdown();
+            ensureSessionTimer();
+        }
+
+        let modalContext = null;
+        let selectedSite = null;
+        let tokenInputEl = null;
+        let pendingTokenValue = '';
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+            }
+        }
+
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        function resetSiteSelection(clearContext = true) {
+            selectedSite = null;
+            if (clearContext) {
+                modalContext = null;
+                pendingTokenValue = '';
+            }
+            const note = document.getElementById('siteSelectionNote');
+            const selectionStep = document.getElementById('siteSelectionStep');
+            const freeTrialStep = document.getElementById('freeTrialInfoStep');
+            if (note) {
+                note.textContent = 'Choose the betting site you want to use with AviSignals.';
+            }
+            if (selectionStep) {
+                selectionStep.classList.remove('hidden');
+            }
+            if (freeTrialStep) {
+                freeTrialStep.classList.add('hidden');
+            }
+        }
+
+        function beginFreeTrialFlow() {
+            if (hasUsedFreeTrial()) {
+                window.open(LANDING_WHATSAPP_LINK, '_blank');
+                return;
+            }
+
+            resetSiteSelection();
+            modalContext = 'freeTrial';
+            const note = document.getElementById('siteSelectionNote');
+            if (note) {
+                note.textContent = 'Free trial is currently available only on JetBet Aviator. Select JetBet to continue.';
+            }
+            openModal('siteSelectionModal');
+        }
+
+        function beginTokenPurchaseFlow() {
+            resetSiteSelection();
+            modalContext = 'buyToken';
+            const note = document.getElementById('siteSelectionNote');
+            if (note) {
+                note.textContent = 'Select the betting site you plan to use with your token.';
+            }
+            openModal('siteSelectionModal');
+        }
+
+        function showLoadingState(active, titleText = 'Connecting...', messageText = 'Hold on while we connect to your selected betting site.') {
+            const modal = document.getElementById('loadingModal');
+            const titleEl = document.getElementById('loadingTitle');
+            const messageEl = document.getElementById('loadingMessage');
+
+            if (titleEl && titleText) {
+                titleEl.textContent = titleText;
+            }
+
+            if (messageEl && messageText) {
+                messageEl.textContent = messageText;
+            }
+
+            if (!modal) {
+                return;
+            }
+
+            if (active) {
+                modal.classList.add('active');
+            } else {
+                modal.classList.remove('active');
+            }
+        }
+
+        function startTokenActivationFlow(rawToken) {
+            resetSiteSelection();
+            pendingTokenValue = rawToken;
+
+            if (!pendingTokenValue) {
+                showTokenFeedback('Enter your access token to continue.', 'error');
+                if (tokenInputEl) {
+                    tokenInputEl.focus();
+                }
+                return;
+            }
+
+            modalContext = 'token';
+            const note = document.getElementById('siteSelectionNote');
+            if (note) {
+                note.textContent = 'Select the betting site linked to your token.';
+            }
+            openModal('siteSelectionModal');
+        }
+
+        function handleSiteSelection(siteName) {
+            selectedSite = siteName;
+
+            if (modalContext === 'freeTrial') {
+                const note = document.getElementById('siteSelectionNote');
+                const selectionStep = document.getElementById('siteSelectionStep');
+                const freeTrialStep = document.getElementById('freeTrialInfoStep');
+
+                if (siteName !== 'JetBet') {
+                    if (note) {
+                        note.textContent = 'Free trial is only available on JetBet Aviator. Please select JetBet to continue.';
+                    }
+                    return;
+                }
+
+                if (note) {
+                    note.textContent = 'Free trial confirmed on JetBet Aviator.';
+                }
+                if (selectionStep) {
+                    selectionStep.classList.add('hidden');
+                }
+                if (freeTrialStep) {
+                    freeTrialStep.classList.remove('hidden');
+                }
+                return;
+            }
+
+            if (modalContext === 'buyToken') {
+                closeModal('siteSelectionModal');
+                showLoadingState(true, `Redirecting to token purchase for ${siteName}...`, 'Preparing secure checkout...');
+
+                setTimeout(() => {
+                    window.open(TOKEN_PURCHASE_URL, '_blank');
+                    showLoadingState(false);
+                    resetSiteSelection();
+                }, 800);
+
+                return;
+            }
+
+            if (modalContext === 'token') {
+                closeModal('siteSelectionModal');
+                showLoadingState(true, `Connecting to ${siteName} Aviator...`, 'Validating your access token...');
+
+                setTimeout(() => {
+                    if (siteName !== 'JetBet') {
+                        showLoadingState(false);
+                        showTokenFeedback('Invalid token for the selected betting site.', 'error');
+                        resetSiteSelection();
+                        return;
+                    }
+
+                    const validation = validateTokenInput(pendingTokenValue);
+                    if (!validation.valid) {
+                        showLoadingState(false);
+                        showTokenFeedback(validation.message, 'error');
+                        resetSiteSelection();
+                        return;
+                    }
+
+                    const { token } = validation;
+                    markTokenUsed(token.id);
+                    enableSession(token.durationMinutes, token.tier);
+                    showTokenFeedback(`Activated ${token.tier}. Launching bot...`, 'success');
+                    updateAdminTable();
+
+                    showLoadingState(true, 'Connecting to JetBet Aviator...', 'Starting secure session...');
+                    setTimeout(() => {
+                        showLoadingState(false);
+                        startGameSession();
+                        resetSiteSelection();
+                    }, 1600);
+                }, 900);
+            }
+        }
+
+        function handleFreeTrialContinue() {
+            if (selectedSite !== 'JetBet') {
+                return;
+            }
+
+            closeModal('siteSelectionModal');
+            showLoadingState(true, 'Connecting to JetBet Aviator...', 'Preparing your free trial session...');
+
+            markFreeTrialUsed();
+            enableSession(2, 'Free Trial');
+
+            setTimeout(() => {
+                showLoadingState(false);
+                startGameSession();
+                resetSiteSelection();
+            }, 1600);
+        }
+
+        function showTokenFeedback(message, type = 'error') {
+            const feedback = document.getElementById('tokenFeedback');
+            if (!feedback) return;
+            feedback.className = `token-feedback token-${type}`;
+            feedback.textContent = message;
+        }
+
+        function validateTokenInput(rawToken) {
+            if (!rawToken || rawToken.length < 6) {
+                return { valid: false, message: 'Enter a valid token ID.' };
+            }
+
+            const token = getTokenDefinitionById(rawToken.trim());
+            if (!token) {
+                return { valid: false, message: 'Token not recognized. Contact support.' };
+            }
+
+            if (!token.reusable && isTokenUsed(token.id)) {
+                return { valid: false, message: 'Token already used. Request a new code.' };
+            }
+
+            return { valid: true, token };
+        }
+
+        async function fetchRoundConfig() {
+            try {
+                const response = await fetch(`${ROUND_API_BASE}/api/rounds/config`);
+                if (response.ok) {
+                    const config = await response.json();
+                    if (config.roundDurationMs) {
+                        ROUND_DURATION_MS = config.roundDurationMs;
+                        console.log('Round config loaded:', config);
+                    }
+                }
+            } catch (error) {
+                console.warn('Failed to fetch round config, using defaults:', error);
+            }
+        }
+
+        function startGameSession() {
+            // Reset developer config for new session
+            devConfig = createDefaultConfig();
+            devConfig.usingApi = true;
+
+            document.getElementById('roundCounter').textContent = 'Syncing...';
+            document.getElementById('roundStatus').textContent = 'Awaiting live round schedule...';
+            document.getElementById('predictionDisplay').textContent = 'Loading...';
+            document.getElementById('predictionDisplay').className = 'prediction-display prediction-blurred';
+            document.getElementById('gameStartBtn').textContent = 'Activate Bot';
+            document.getElementById('gameStartBtn').disabled = false;
+            const refreshBtn = document.getElementById('refreshBotBtn');
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = 'Refresh Sync';
+            }
+
+            document.getElementById('gameModal').style.display = 'flex';
+            document.body.classList.add('game-active-mode');
+
+            devConfig.startTime = new Date();
+            devConfig.predictions = ['?.??x'];
+            devConfig.roundQueue = [];
+            devConfig.roundMetadata = [];
+            devConfig.manualPredictions = [];
+
+            fetchRoundConfig();
+            updateSessionCountdown();
+            ensureSessionTimer();
+            startRoundPolling();
+
+            const rejoinBtn = document.getElementById('rejoinSessionBtn');
+            if (rejoinBtn) {
+                rejoinBtn.classList.add('hidden');
+                rejoinBtn.disabled = false;
+                rejoinBtn.innerHTML = '<i class="fas fa-redo"></i>Rejoin Active Session';
+            }
+        }
+
+        async function refreshBotSync() {
+            if (!devConfig.usingApi) {
+                startRoundPolling();
+                devConfig.usingApi = true;
+            }
+
+            const refreshBtn = document.getElementById('refreshBotBtn');
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refreshing...';
+            }
+
+            devConfig.roundQueue = [];
+            devConfig.roundMetadata = [];
+            devConfig.seenRoundIds = new Set();
+            devConfig.roundFetchFailures = 0;
+            devConfig.roundFetchInFlight = false;
+
+            const roundStatus = document.getElementById('roundStatus');
+            const predictionDisplay = document.getElementById('predictionDisplay');
+            const roundTimer = document.getElementById('roundTimer');
+
+            if (roundStatus) {
+                roundStatus.textContent = 'Resyncing with live rounds...';
+            }
+            if (predictionDisplay) {
+                predictionDisplay.textContent = 'Loading...';
+                predictionDisplay.className = 'prediction-display prediction-blurred';
+            }
+            if (roundTimer) {
+                roundTimer.textContent = 'Resyncing...';
+            }
+
+            stopRoundCountdown();
+            stopRoundPolling();
+
+            await refreshRoundQueue(true);
+            startRoundPolling();
+
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh Sync';
+            }
+        }
+
+        function showNextPrediction() {
+            if (!devConfig.isActive) {
+                devConfig.isActive = true;
+                document.getElementById('roundStatus').textContent = 'Ready for next prediction';
+                document.getElementById('predictionDisplay').className = 'prediction-display';
+                document.getElementById('gameStartBtn').textContent = 'Predict';
+                return;
+            }
+
+            startNewRound();
+        }
+
+        function startNewRound() {
+            if (devConfig.isRoundActive) return; // Prevent double-clicking
+            
+            devConfig.isRoundActive = true;
+            devConfig.sessionState = 'predicting';
+            devConfig.roundStartTime = Date.now();
+            
+            let targetPrediction = devConfig.predictions[devConfig.currentIndex];
+            let roundMeta = null;
+
+            if (devConfig.usingApi && devConfig.roundQueue.length > 0) {
+                const nextRound = devConfig.roundQueue.shift();
+                if (nextRound) {
+                    roundMeta = nextRound;
+                    devConfig.currentRoundMeta = roundMeta;
+                    targetPrediction = formatMultiplier(roundMeta.multiplier);
+                    document.getElementById('roundCounter').textContent = `Round ${roundMeta.roundId}`;
+                    devConfig.seenRoundIds.add(roundMeta.roundId);
+                }
+            }
+            
+            // Update UI for round start
+            document.getElementById('gameStartBtn').disabled = true;
+            document.getElementById('gameStartBtn').textContent = 'Round In Progress...';
+            
+            // Phase 1: Collecting prediction (2 seconds)
+            document.getElementById('roundStatus').textContent = 'Collecting Next Round...';
+            startRoundTimer();
+            
+            setTimeout(() => {
+                // Phase 2: Start multiplier animation (3 seconds)
+                devConfig.sessionState = 'active';
+                document.getElementById('roundStatus').textContent = 'Active Round - Multiplier Running';
+                animateMultiplierCounter(targetPrediction);
+            }, 2000);
+            
+            setTimeout(() => {
+                // Phase 3: Plane flies (1.5 seconds)
+                devConfig.sessionState = 'flying';
+                document.getElementById('roundStatus').textContent = 'Plane Flies...';
+                finalizeMultiplier(targetPrediction);
+                if (roundMeta) {
+                    devConfig.predictions[devConfig.currentIndex] = targetPrediction;
+                }
+            }, 5000);
+            
+            setTimeout(() => {
+                // Phase 4: Round completed (2 seconds)
+                devConfig.sessionState = 'completed';
+                document.getElementById('roundStatus').textContent = 'Round Completed';
+                showFinalPrediction(targetPrediction);
+            }, 6500);
+            
+            setTimeout(() => {
+                // Phase 5: Ready for next round
+                completeRound();
+            }, 8500);
+        }
+
+        function animateMultiplierCounter(targetMultiplier) {
+            const predictionEl = document.getElementById('predictionDisplay');
+            predictionEl.className = 'prediction-display multiplier-animating';
+            
+            // Extract the numeric value from the target (e.g., "2.45x" -> 2.45)
+            const targetValue = parseFloat(targetMultiplier.replace('x', ''));
+            const startValue = 1.00;
+            const duration = 2500; // 2.5 seconds of animation
+            const steps = 50;
+            const increment = (targetValue - startValue) / steps;
+            
+            let currentValue = startValue;
+            let step = 0;
+            
+            const animationInterval = setInterval(() => {
+                if (step >= steps) {
+                    clearInterval(animationInterval);
+                    return;
+                }
+                
+                currentValue += increment + (Math.random() * 0.02 - 0.01); // Add slight randomness
+                
+                // Ensure we don't exceed target
+                if (currentValue >= targetValue) {
+                    currentValue = targetValue;
+                    clearInterval(animationInterval);
+                }
+                
+                predictionEl.textContent = currentValue.toFixed(2) + 'x';
+                step++;
+            }, duration / steps);
+        }
+
+        function finalizeMultiplier(targetPrediction) {
+            const predictionEl = document.getElementById('predictionDisplay');
+            predictionEl.textContent = targetPrediction;
+            predictionEl.className = 'prediction-display multiplier-final';
+        }
+
+        function showFinalPrediction(prediction) {
+            const predictionEl = document.getElementById('predictionDisplay');
+            predictionEl.textContent = prediction;
+            predictionEl.className = 'prediction-display multiplier-final';
+            
+            // Show completion effect
+            setTimeout(() => {
+                predictionEl.className = 'prediction-display';
+            }, 1000);
+        }
+
+        function startRoundTimer() {
+            // This function is called when a round starts
+            // It can be used to update UI or track round progress
+            console.log('Round timer started');
+        }
+
+        function stopRoundTimer() {
+            // This function is called when a round ends
+            console.log('Round timer stopped');
+        }
+
+        function completeRound() {
+            devConfig.isRoundActive = false;
+            devConfig.sessionState = 'waiting';
+            devConfig.currentIndex++;
+            
+            stopRoundTimer();
+            
+            if (devConfig.currentIndex >= devConfig.predictions.length && !devConfig.usingApi) {
+                document.getElementById('roundStatus').textContent = 'All predictions completed';
+                document.getElementById('gameStartBtn').textContent = 'Session Finished';
+                document.getElementById('gameStartBtn').disabled = true;
+                document.getElementById('predictionDisplay').textContent = 'Session Complete';
+            } else {
+                document.getElementById('roundStatus').textContent = 'Ready for next prediction';
+                document.getElementById('gameStartBtn').textContent = 'Predict Next Round';
+                document.getElementById('gameStartBtn').disabled = false;
+                
+                // Reset prediction display for next round
+                document.getElementById('predictionDisplay').textContent = devConfig.usingApi ? 'Loading...' : '?.??x';
+                document.getElementById('predictionDisplay').className = 'prediction-display prediction-blurred';
+                
+                // If using API, fetch next round immediately
+                if (devConfig.usingApi && devConfig.roundQueue.length === 0) {
+                    refreshRoundQueue(false);
+                }
+            }
+            
+            return;
+        }
+
+        function stopSession() {
+            // Clear all timers
+            if (devConfig.sessionTimerInterval) {
+                clearInterval(devConfig.sessionTimerInterval);
+                devConfig.sessionTimerInterval = null;
+            }
+            
+            // Update UI
+            devConfig.isActive = false;
+            devConfig.isRoundActive = false;
+            devConfig.sessionState = 'waiting';
+            document.getElementById('roundStatus').textContent = 'Session completed';
+            document.getElementById('gameStartBtn').textContent = 'Session Ended';
+            document.getElementById('gameStartBtn').disabled = true;
+            document.getElementById('predictionDisplay').className = 'prediction-display prediction-blurred';
+            
+            // Auto-close after 3 seconds
+            setTimeout(() => {
+                alert('Bot session completed!');
+            }, 3000);
+        }
+
+        function closeGame() {
+            // Clear timer
+            if (devConfig.sessionTimerInterval) {
+                clearInterval(devConfig.sessionTimerInterval);
+                devConfig.sessionTimerInterval = null;
+            }
+            if (devConfig.roundPollInterval) {
+                clearInterval(devConfig.roundPollInterval);
+                devConfig.roundPollInterval = null;
+            }
+            
+            // Hide game modal and return to dev setup
+            document.getElementById('gameModal').style.display = 'none';
+            document.body.classList.remove('game-active-mode');
+            
+            // Reset dev config
+            devConfig = createDefaultConfig();
+        }
+
+        // Prevent right-click context menu
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+
+        function toggleTokenInput() {
+            const area = document.getElementById('tokenActivationArea');
+            if (!area) return;
+            if (area.classList.contains('hidden')) {
+                area.classList.remove('hidden');
+            } else {
+                area.classList.add('hidden');
+            }
+        }
+
+        function initLandingPage() {
+            const freeTrialBtn = document.getElementById('freeTrialBtn');
+            const getTokenBtn = document.getElementById('getTokenBtn');
+            const toggleTokenBtn = document.getElementById('toggleTokenBtn');
+            const activateTokenBtn = document.getElementById('activateTokenBtn');
+            const tokenInput = document.getElementById('tokenInput');
+            const openAdminLink = document.getElementById('openAdminLink');
+            const closeAdminBtn = document.getElementById('closeAdminBtn');
+            const resetTokensBtn = document.getElementById('resetTokensBtn');
+            const rejoinSessionBtn = document.getElementById('rejoinSessionBtn');
+            const siteButtons = document.querySelectorAll('.site-button');
+            const modalCloseButtons = document.querySelectorAll('.modal-close');
+            const freeTrialContinueBtn = document.getElementById('freeTrialContinueBtn');
+
+            tokenInputEl = tokenInput;
+
+            if (freeTrialBtn) {
+                freeTrialBtn.addEventListener('click', beginFreeTrialFlow);
+            }
+
+            if (getTokenBtn) {
+                getTokenBtn.addEventListener('click', beginTokenPurchaseFlow);
+            }
+
+            if (toggleTokenBtn) {
+                toggleTokenBtn.addEventListener('click', toggleTokenInput);
+            }
+
+            if (activateTokenBtn) {
+                activateTokenBtn.addEventListener('click', () => {
+                    if (!tokenInput) return;
+                    startTokenActivationFlow(tokenInput.value.trim());
+                });
+            }
+
+            if (tokenInput) {
+                tokenInput.addEventListener('keyup', (event) => {
+                    if (event.key === 'Enter') {
+                        startTokenActivationFlow(tokenInput.value.trim());
+                    }
+                });
+            }
+
+            if (openAdminLink) {
+                openAdminLink.addEventListener('click', openAdminPanel);
+            }
+
+            if (closeAdminBtn) {
+                closeAdminBtn.addEventListener('click', closeAdminPanel);
+            }
+
+            if (resetTokensBtn) {
+                resetTokensBtn.addEventListener('click', () => {
+                    resetTokenStates();
+                    updateAdminTable();
+                    showTokenFeedback('Token statuses reset locally.', 'success');
+                });
+            }
+
+            if (rejoinSessionBtn) {
+                rejoinSessionBtn.addEventListener('click', () => {
+                    rejoinSessionBtn.disabled = true;
+                    rejoinSessionBtn.innerHTML = '<i class="fas fa-redo"></i>Rejoining...';
+                    startGameSession();
+                });
+            }
+
+            siteButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const siteName = button.getAttribute('data-site');
+                    handleSiteSelection(siteName);
+                });
+            });
+
+            modalCloseButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const target = button.getAttribute('data-close-modal');
+                    if (target === 'site') {
+                        closeModal('siteSelectionModal');
+                        resetSiteSelection();
+                    }
+                });
+            });
+
+            if (freeTrialContinueBtn) {
+                freeTrialContinueBtn.addEventListener('click', handleFreeTrialContinue);
+            }
+
+            const session = getSessionState();
+            if (session && session.expiry > Date.now()) {
+                ensureSessionTimer();
+                showSessionStatus('You have an active session. Rejoin to continue.', true);
+                if (rejoinSessionBtn) {
+                    rejoinSessionBtn.classList.remove('hidden');
+                    rejoinSessionBtn.disabled = false;
+                    rejoinSessionBtn.innerHTML = '<i class="fas fa-redo"></i>Rejoin Active Session';
+                }
+            } else {
+                clearSessionState();
+                showSessionStatus('Awaiting activation. Use a token or start the free trial.');
+                if (rejoinSessionBtn) {
+                    rejoinSessionBtn.classList.add('hidden');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initLandingPage);
+
+        // Game Modal close button functionality
+        document.querySelectorAll('.close-game').forEach(button => {
+            button.addEventListener('click', closeGame);
+        });
+    </script>
+</body>
+</html>
