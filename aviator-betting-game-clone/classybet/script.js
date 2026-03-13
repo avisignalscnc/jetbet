@@ -210,15 +210,16 @@ class AviatorGame {
     }
 
     // Currency formatting method
-    formatCurrency(amount) {
+    formatCurrency(amount, currency = null) {
+        const currencyCode = currency || (window.jetbetAPI && window.jetbetAPI.user ? window.jetbetAPI.user.currency : 'KES');
+        const symbol = (typeof window.getCurrencySymbol === 'function') ? window.getCurrencySymbol(currencyCode) : 'KES';
         const numAmount = parseFloat(amount) || 0;
-        // Use global currency helper if available, otherwise fallback to KES
-        if (typeof window.getUserCurrency === 'function' && typeof window.getCurrencySymbol === 'function') {
-            const currency = window.getUserCurrency();
-            const symbol = window.getCurrencySymbol(currency);
-            return `${symbol} ${numAmount.toFixed(2)}`;
+        
+        // Format with commas as thousand separators
+        if (typeof numAmount.toLocaleString === 'function') {
+            return `${symbol} ${numAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         }
-        return `KES ${numAmount.toFixed(2)}`; // Fallback
+        return `${symbol} ${numAmount.toFixed(2)}`; // Absolute fallback
     }
 
     updateBalance() {

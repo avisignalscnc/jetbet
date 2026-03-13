@@ -341,7 +341,7 @@ class JetBetAPI {
 
     // Utility methods
     formatBalance(balance) {
-        return `KES ${balance.toFixed(2)}`;
+        return `KES ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     generateGameRound() {
