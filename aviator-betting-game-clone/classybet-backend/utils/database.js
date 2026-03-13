@@ -12,7 +12,11 @@ async function connectToMongoDB() {
     throw new Error('MONGODB_URI environment variable is not set');
   }
 
-  const mongoURI = process.env.MONGODB_URI.trim();
+  // Defensive: Strip leading '=' and trim spaces
+  let mongoURI = process.env.MONGODB_URI.trim();
+  if (mongoURI.startsWith('=')) {
+    mongoURI = mongoURI.substring(1).trim();
+  }
 
   try {
     console.log('Creating new MongoDB connection...');

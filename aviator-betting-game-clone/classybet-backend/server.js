@@ -25,9 +25,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 
 // Trust proxy for rate limiting behind reverse proxies (Render, Heroku, etc.)
-if (process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-}
+app.set('trust proxy', 1);
 
 // Middleware
 // Capture raw body for Slack signature verification
