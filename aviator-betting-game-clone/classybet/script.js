@@ -1096,13 +1096,17 @@ class AviatorGame {
             this.playerBalance += winnings;
             this.updateBalance();
             
-            // Update localStorage
+            // Update localStorage and mark as having local wins
             const userData = localStorage.getItem('userData');
             if (userData) {
                 const user = JSON.parse(userData);
                 user.balance = this.playerBalance;
+                user.hasLocalWins = true; // Flag to indicate we have local wins to preserve
+                user.lastLocalWinTime = Date.now(); // Track when the win occurred
                 localStorage.setItem('userData', JSON.stringify(user));
             }
+            
+            console.log('[CASHOUT] Local balance updated with winnings:', this.playerBalance);
         }
 
         this.addBetToHistory({
@@ -2214,9 +2218,44 @@ class AviatorGame {
             JetBetAPI.endRound(crashMultiplier)
                 .then(result => {
                     if (result && result.success && result.data && result.data.newBalance !== undefined) {
-                        // Update game balance from backend
-                        this.playerBalance = result.data.newBalance;
-                        this.updateBalance();
+                        const currentLocalBalance = this.playerBalance;
+                        const backendBalance = result.data.newBalance;
+                        
+                        // Check if we have local wins that should be preserved
+                        const userData = localStorage.getItem('userData');
+                        let hasLocalWins = false;
+                        
+                        if (userData) {
+                            const user = JSON.parse(userData);
+                            hasLocalWins = user.hasLocalWins || false;
+                            
+                            // Clear the local wins flag after checking (it's one-time use)
+                            if (hasLocalWins) {
+                                user.hasLocalWins = false;
+                                localStorage.setItem('userData', JSON.stringify(user));
+                            }
+                        }
+                        
+                        // Always preserve local balance if it's higher or we have local wins
+                        if (currentLocalBalance > backendBalance || hasLocalWins) {
+                            console.log('[BALANCE] Preserving local balance:', {
+                                local: currentLocalBalance,
+                                backend: backendBalance,
+                                hasLocalWins: hasLocalWins
+                            });
+                            
+                            // Update localStorage with preserved balance
+                            if (userData) {
+                                const user = JSON.parse(userData);
+                                user.balance = currentLocalBalance;
+                                localStorage.setItem('userData', JSON.stringify(user));
+                            }
+                        } else {
+                            // Update game balance from backend
+                            this.playerBalance = backendBalance;
+                            this.updateBalance();
+                            console.log('[BALANCE] Updated from backend:', backendBalance);
+                        }
                     }
                 })
                 .catch(error => {
