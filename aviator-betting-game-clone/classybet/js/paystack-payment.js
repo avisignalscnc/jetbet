@@ -22,7 +22,7 @@ const CURRENCY_LIMITS = {
  */
 function formatCurrency(amount, currency = 'KES') {
     const limits = CURRENCY_LIMITS[currency] || CURRENCY_LIMITS.USD;
-    return `${limits.symbol} ${parseFloat(amount).toFixed(2)}`;
+    return `${limits.symbol} ${parseFloat(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 /**
