@@ -70,7 +70,7 @@ https://JetBet-aviator.vercel.app
                ↓
 ┌─────────────────────────────────────────┐
 │  DATABASE (MongoDB Atlas)               │
-│  cluster0.nuiyrip.mongodb.net           │
+│  cluster0.cegzff2.mongodb.net           │
 │  • Database: JetBet                  │
 │  • Collections: users, bets, etc.       │
 └─────────────────────────────────────────┘

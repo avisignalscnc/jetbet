@@ -6,7 +6,7 @@ Copy and paste these exact values into Render Dashboard:
 
 ## Variable 1: MONGODB_URI
 ```
-mongodb+srv://joshuajoee204_db_user:classyd3v@cluster0.nuiyrip.mongodb.net/JetBet?retryWrites=true&w=majority&appName=Cluster0
+mongodb+srv://joshuajoee204_db_user:jetbetcnc@cluster0.cegzff2.mongodb.net/JetBet?retryWrites=true&w=majority&appName=Cluster0
 ```
 
 ## Variable 2: JWT_SECRET

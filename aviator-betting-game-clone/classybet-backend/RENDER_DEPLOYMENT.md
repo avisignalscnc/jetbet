@@ -50,11 +50,7 @@ Start Command: npm start
 #### 4. Add Environment Variables
 Click **"Advanced"** → **"Add Environment Variable"**
 
-Add these one by one:
 
-```
-MONGODB_URI
-mongodb+srv://joshuajoee204_db_user:classyd3v@cluster0.nuiyrip.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
 
 JWT_SECRET
 a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4d3c2b1a0f9e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1
