@@ -1,0 +1,8 @@
+# robots.txt for JetBet Aviator
+User-agent: *
+Allow: /
+Disallow: /private/
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://jetbetaviator.com/sitemap.xml
