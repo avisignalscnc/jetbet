@@ -1430,7 +1430,7 @@
                         const balance = user.balance || 0;
                         const balanceText = (typeof formatCurrency === 'function' && user.currency)
                             ? formatCurrency(balance, user.currency)
-                            : `KES ${balance.toFixed(2)}`;
+                            : `KES ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                         document.getElementById('headerBalance').textContent = balanceText;
                     } catch (error) {
                         console.error('Error loading user data:', error);

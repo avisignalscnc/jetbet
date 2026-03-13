@@ -3538,26 +3538,32 @@ function updateUserDisplay(user) {
 function updateBalanceDisplay(balance) {
     // Get user currency for formatting
     const currency = (typeof window.getUserCurrency === 'function') ? window.getUserCurrency() : 'KES';
-    const formattedBalance = (typeof window.formatCurrency === 'function')
-        ? window.formatCurrency(balance, currency)
-        : `KES ${balance.toFixed(2)}`;
-
-    // Update navigation balance
-    const navBalance = document.getElementById('nav-balance');
-    if (navBalance) {
-        navBalance.textContent = formattedBalance;
+    
+    // Robust formatting that handles commas regardless of helper availability
+    let formattedBalance;
+    if (typeof window.formatCurrency === 'function') {
+        formattedBalance = window.formatCurrency(balance, currency);
+    } else {
+        const symbol = (typeof window.getCurrencySymbol === 'function') ? window.getCurrencySymbol(currency) : currency;
+        const num = parseFloat(balance) || 0;
+        formattedBalance = `${symbol} ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
-    // Update game header balance
-    const gameHeaderBalance = document.getElementById('balance-amount');
-    if (gameHeaderBalance) {
-        gameHeaderBalance.textContent = formattedBalance;
-    }
+    // Update all potential balance elements across different pages
+    const balanceIds = ['nav-balance', 'balance-amount', 'headerBalance', 'header-balance', 'profile-balance', 'biggest-win'];
+    
+    balanceIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            // Some elements might have "KES " prefix hardcoded in HTML before the span, 
+            // but updateBalanceDisplay usually sets the full text including symbol.
+            el.textContent = formattedBalance;
+        }
+    });
 
     // Update game instance balance
     if (window.game) {
         window.game.playerBalance = balance;
-        // The game's updateBalance will also update navigation, but we already did it above
     }
 }
 
