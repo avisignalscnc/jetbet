@@ -726,7 +726,31 @@ class AviatorGame {
         // Generate player name in format 'a***d'
         const playerName = this.generateRandomPlayerName();
         const avatar = this.pickRandomAvatar();
-        const betAmount = (Math.random() * 200 + 10).toFixed(2);
+        
+        // High bet amounts in descending order - most players bet high amounts
+        const betAmountRanges = [
+            { min: 10000, max: 10000, weight: 30 },    // 30% chance - 10000
+            { min: 8000, max: 8000, weight: 25 },      // 25% chance - 8000  
+            { min: 7500, max: 7500, weight: 20 },      // 20% chance - 7500
+            { min: 5000, max: 5000, weight: 15 },      // 15% chance - 5000
+            { min: 3000, max: 3000, weight: 7 },       // 7% chance - 3000
+            { min: 800, max: 800, weight: 3 }          // 3% chance - 800 (rare)
+        ];
+        
+        // Weighted random selection
+        const totalWeight = betAmountRanges.reduce((sum, range) => sum + range.weight, 0);
+        let random = Math.random() * totalWeight;
+        let selectedRange = betAmountRanges[0];
+        
+        for (const range of betAmountRanges) {
+            random -= range.weight;
+            if (random <= 0) {
+                selectedRange = range;
+                break;
+            }
+        }
+        
+        const betAmount = selectedRange.min;
 
         // Randomly decide if this bet will cash out or crash
         const willCashOut = Math.random() > 0.3; // 70% chance to cash out
@@ -2692,11 +2716,37 @@ class AviatorGame {
         this.previousBetsData = [];
         this.topResultsData = [];
 
+        // Helper function to get high bet amount (same as generateRandomBet)
+        const getHighBetAmount = () => {
+            const betAmountRanges = [
+                { min: 10000, max: 10000, weight: 30 },    // 30% chance - 10000
+                { min: 8000, max: 8000, weight: 25 },      // 25% chance - 8000  
+                { min: 7500, max: 7500, weight: 20 },      // 20% chance - 7500
+                { min: 5000, max: 5000, weight: 15 },      // 15% chance - 5000
+                { min: 3000, max: 3000, weight: 7 },       // 7% chance - 3000
+                { min: 800, max: 800, weight: 3 }          // 3% chance - 800 (rare)
+            ];
+            
+            const totalWeight = betAmountRanges.reduce((sum, range) => sum + range.weight, 0);
+            let random = Math.random() * totalWeight;
+            let selectedRange = betAmountRanges[0];
+            
+            for (const range of betAmountRanges) {
+                random -= range.weight;
+                if (random <= 0) {
+                    selectedRange = range;
+                    break;
+                }
+            }
+            
+            return selectedRange.min;
+        };
+
         // Ensure 600+ bets per round
         const betCount = 600 + Math.floor(Math.random() * 250);
         for (let i = 0; i < betCount; i++) {
             const playerName = this.generateRandomPlayerName();
-            const amount = parseFloat((Math.random() * 500 + 5).toFixed(2));
+            const amount = getHighBetAmount();
             const didCashOut = Math.random() < 0.35; // ~35% cash out
             const multiplier = didCashOut ? parseFloat((Math.random() * 5 + 1).toFixed(2)) : null;
             const win = multiplier ? parseFloat((amount * multiplier).toFixed(2)) : null;
@@ -2715,7 +2765,7 @@ class AviatorGame {
         const prevCount = 600 + Math.floor(Math.random() * 250);
         for (let i = 0; i < prevCount; i++) {
             const playerName = this.generateRandomPlayerName();
-            const amount = parseFloat((Math.random() * 500 + 5).toFixed(2));
+            const amount = getHighBetAmount();
             const multiplier = parseFloat((Math.random() * 5 + 1).toFixed(2));
             const win = parseFloat((amount * multiplier).toFixed(2));
             this.previousBetsData.push({
@@ -2731,7 +2781,7 @@ class AviatorGame {
         // Top results: randomize by current filter later
         for (let i = 0; i < 50; i++) {
             const playerName = this.generateRandomPlayerName();
-            const amount = parseFloat((Math.random() * 700 + 20).toFixed(2));
+            const amount = getHighBetAmount(); // Use same high amounts
             const multiplier = parseFloat((Math.random() * 90 + 10).toFixed(2));
             const win = parseFloat((amount * Math.max(1.1, multiplier)).toFixed(2));
             this.topResultsData.push({
