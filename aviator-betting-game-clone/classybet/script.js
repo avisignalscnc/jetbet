@@ -729,12 +729,12 @@ class AviatorGame {
         
         // High bet amounts in descending order - most players bet high amounts
         const betAmountRanges = [
-            { min: 10000, max: 10000, weight: 30 },    // 30% chance - 10000
-            { min: 8000, max: 8000, weight: 25 },      // 25% chance - 8000  
-            { min: 7500, max: 7500, weight: 20 },      // 20% chance - 7500
-            { min: 5000, max: 5000, weight: 15 },      // 15% chance - 5000
-            { min: 3000, max: 3000, weight: 7 },       // 7% chance - 3000
-            { min: 800, max: 800, weight: 3 }          // 3% chance - 800 (rare)
+            { min: 8100, max: 10000, weight: 3 },    // 3% chance - 10000
+            { min: 7600, max: 8000, weight: 7 },      // 7% chance - 8000  
+            { min: 5100, max: 7500, weight: 15 },      // 15% chance - 7500
+            { min: 3100, max: 5000, weight: 20 },      // 20% chance - 5000
+            { min: 1000, max: 3000, weight: 25 },       // 25% chance - 3000
+            { min: 200, max: 800, weight: 30 }          // 30% chance - 800 (rare)
         ];
         
         // Weighted random selection
