@@ -729,12 +729,12 @@ class AviatorGame {
         
         // High bet amounts in descending order - most players bet high amounts
         const betAmountRanges = [
-            { min: 8100, max: 10000, weight: 3 },    // 3% chance - 10000
-            { min: 7600, max: 8000, weight: 7 },      // 7% chance - 8000  
-            { min: 5100, max: 7500, weight: 15 },      // 15% chance - 7500
-            { min: 3100, max: 5000, weight: 20 },      // 20% chance - 5000
-            { min: 1000, max: 3000, weight: 25 },       // 25% chance - 3000
-            { min: 200, max: 800, weight: 30 }          // 30% chance - 800 (rare)
+            { min: 8100, max: 10000, weight: 3 },    // 3% chance - 8100-10000
+            { min: 7600, max: 8000, weight: 7 },      // 7% chance - 7600-8000  
+            { min: 5100, max: 7500, weight: 15 },      // 15% chance - 5100-7500
+            { min: 3100, max: 5000, weight: 20 },      // 20% chance - 3100-5000
+            { min: 1000, max: 3000, weight: 25 },       // 25% chance - 1000-3000
+            { min: 200, max: 800, weight: 30 }          // 30% chance - 200-800
         ];
         
         // Weighted random selection
@@ -750,7 +750,9 @@ class AviatorGame {
             }
         }
         
-        const betAmount = selectedRange.min;
+        // Generate random amount within the selected range and round to nearest 100
+        const randomAmount = Math.random() * (selectedRange.max - selectedRange.min) + selectedRange.min;
+        const betAmount = Math.round(randomAmount / 100) * 100; // Round to nearest 100
 
         // Randomly decide if this bet will cash out or crash
         const willCashOut = Math.random() > 0.3; // 70% chance to cash out
@@ -2719,12 +2721,12 @@ class AviatorGame {
         // Helper function to get high bet amount (same as generateRandomBet)
         const getHighBetAmount = () => {
             const betAmountRanges = [
-                { min: 10000, max: 10000, weight: 30 },    // 30% chance - 10000
-                { min: 8000, max: 8000, weight: 25 },      // 25% chance - 8000  
-                { min: 7500, max: 7500, weight: 20 },      // 20% chance - 7500
-                { min: 5000, max: 5000, weight: 15 },      // 15% chance - 5000
-                { min: 3000, max: 3000, weight: 7 },       // 7% chance - 3000
-                { min: 800, max: 800, weight: 3 }          // 3% chance - 800 (rare)
+                { min: 8100, max: 10000, weight: 3 },    // 3% chance - 8100-10000
+                { min: 7600, max: 8000, weight: 7 },      // 7% chance - 7600-8000  
+                { min: 5100, max: 7500, weight: 15 },      // 15% chance - 5100-7500
+                { min: 3100, max: 5000, weight: 20 },      // 20% chance - 3100-5000
+                { min: 1000, max: 3000, weight: 25 },       // 25% chance - 1000-3000
+                { min: 200, max: 800, weight: 30 }          // 30% chance - 200-800
             ];
             
             const totalWeight = betAmountRanges.reduce((sum, range) => sum + range.weight, 0);
@@ -2739,7 +2741,9 @@ class AviatorGame {
                 }
             }
             
-            return selectedRange.min;
+            // Generate random amount within the selected range and round to nearest 100
+            const randomAmount = Math.random() * (selectedRange.max - selectedRange.min) + selectedRange.min;
+            return Math.round(randomAmount / 100) * 100; // Round to nearest 100
         };
 
         // Ensure 600+ bets per round
