@@ -19,6 +19,7 @@ class AviatorGame {
         this.startY = this.canvas.height;
         this.dotPath = [];
         this.counter = 1.0;
+        this.counterDepo = []; // Initialize to fix slice() TypeError
         if (!localStorage.getItem('round_state_cleared')) {
             localStorage.removeItem('roundHistory');
             localStorage.removeItem('round_history');
@@ -1602,6 +1603,43 @@ class AviatorGame {
         if (history) {
             this.roundHistory = JSON.parse(history);
         }
+
+        const depoHistory = localStorage.getItem('roundHistory');
+        if (depoHistory) {
+            this.counterDepo = JSON.parse(depoHistory);
+        }
+
+        // Trigger official historical sync from backend
+        this.fetchBackendHistory();
+    }
+
+    async fetchBackendHistory() {
+        try {
+            const response = await fetch(`${API_BASE}/api/rounds/history?limit=100`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.rounds && Array.isArray(data.rounds)) {
+                    // Map backend rounds to multiplier array for top bar
+                    this.counterDepo = data.rounds.map(r => r.multiplier);
+                    
+                    // Also update the detailed roundHistory objects
+                    this.roundHistory = data.rounds.map(r => ({
+                        roundNumber: r.roundId,
+                        timestamp: r.startTime,
+                        crashPoint: r.multiplier,
+                        totalBets: 0, // Backend could provide this if we extended schema
+                        totalWinners: 0
+                    }));
+
+                    localStorage.setItem('roundHistory', JSON.stringify(this.counterDepo));
+                    localStorage.setItem('round_history', JSON.stringify(this.roundHistory));
+                    
+                    this.updateCounterDisplay();
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to fetch official round history:', error);
+        }
     }
 
     getTopMultipliers(n = 10) {
@@ -1809,6 +1847,12 @@ class AviatorGame {
     }
 
     updateCounterDisplay() {
+        if (!this.counterDepo || !Array.isArray(this.counterDepo)) {
+            this.counterDepo = [];
+            if (this.lastCounters) this.lastCounters.innerHTML = '';
+            return;
+        }
+
         const screenWidth = window.innerWidth;
         let visibleCount;
 
@@ -1825,17 +1869,19 @@ class AviatorGame {
         const visibleMultipliers = this.counterDepo.slice(0, visibleCount);
         const hiddenMultipliers = this.counterDepo.slice(visibleCount);
 
-        this.lastCounters.innerHTML = visibleMultipliers.map((i, index) => {
-            let classNameForCounter = '';
-            if (i < 2.00) {
-                classNameForCounter = 'blueBorder';
-            } else if (i >= 2 && i < 10) {
-                classNameForCounter = 'purpleBorder';
-            } else {
-                classNameForCounter = 'burgundyBorder';
-            }
-            return `<p class="${classNameForCounter}" data-round="${this.roundNumber - index}" data-multiplier="${i}" onclick="game.showRoundInfo(${this.roundNumber - index}, ${i})">${i.toFixed(2)}</p>`;
-        }).join('');
+        if (this.lastCounters) {
+            this.lastCounters.innerHTML = visibleMultipliers.map((i, index) => {
+                let classNameForCounter = '';
+                if (i < 2.00) {
+                    classNameForCounter = 'blueBorder';
+                } else if (i >= 2 && i < 10) {
+                    classNameForCounter = 'purpleBorder';
+                } else {
+                    classNameForCounter = 'burgundyBorder';
+                }
+                return `<p class="${classNameForCounter}" data-round="${this.roundNumber - index}" data-multiplier="${i}" onclick="game.showRoundInfo(${this.roundNumber - index}, ${i})">${i.toFixed(2)}</p>`;
+            }).join('');
+        }
 
         const hiddenRoundsContainer = document.getElementById('hidden-rounds');
         const showMoreBtn = document.getElementById('show-more-rounds');
@@ -1906,63 +1952,6 @@ class AviatorGame {
         }
     }
 
-    updateCounterDisplay() {
-        const screenWidth = window.innerWidth;
-        let visibleCount;
-
-        if (screenWidth >= 1200) {
-            visibleCount = 16;
-        } else if (screenWidth >= 992) {
-            visibleCount = 12;
-        } else if (screenWidth >= 768) {
-            visibleCount = 10;
-        } else {
-            visibleCount = 8;
-        }
-
-        const visibleMultipliers = this.counterDepo.slice(0, visibleCount);
-        const hiddenMultipliers = this.counterDepo.slice(visibleCount);
-
-        this.lastCounters.innerHTML = visibleMultipliers.map((i, index) => {
-            let classNameForCounter = '';
-            if (i < 2.00) {
-                classNameForCounter = 'blueBorder';
-            } else if (i >= 2 && i < 10) {
-                classNameForCounter = 'purpleBorder';
-            } else {
-                classNameForCounter = 'burgundyBorder';
-            }
-            return `<p class="${classNameForCounter}" data-round="${this.roundNumber - index}" data-multiplier="${i}" onclick="game.showRoundInfo(${this.roundNumber - index}, ${i})">${i.toFixed(2)}</p>`;
-        }).join('');
-
-        const hiddenRoundsContainer = document.getElementById('hidden-rounds');
-        const showMoreBtn = document.getElementById('show-more-rounds');
-
-        if (hiddenRoundsContainer && showMoreBtn) {
-            if (hiddenMultipliers.length > 0) {
-                hiddenRoundsContainer.innerHTML = `
-                <div class="hidden-rounds-grid">
-                    ${hiddenMultipliers.map((i, index) => {
-                    let classNameForCounter = '';
-                    if (i < 2.00) {
-                        classNameForCounter = 'blueBorder';
-                    } else if (i >= 2 && i < 10) {
-                        classNameForCounter = 'purpleBorder';
-                    } else {
-                        classNameForCounter = 'burgundyBorder';
-                    }
-                    const roundNum = this.roundNumber - visibleCount - index;
-                    return `<p class="${classNameForCounter}" data-round="${roundNum}" data-multiplier="${i}" onclick="game.showRoundInfo(${roundNum}, ${i})">${i.toFixed(2)}</p>`;
-                }).join('')}
-                </div>
-            `;
-                showMoreBtn.style.display = 'flex';
-            } else {
-                hiddenRoundsContainer.innerHTML = '';
-                showMoreBtn.style.display = 'none';
-            }
-        }
-    }
 
     startGame() {
         this.gameState = 'flying';

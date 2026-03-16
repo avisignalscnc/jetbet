@@ -5,6 +5,7 @@ const {
   getRoundState,
   getRoundById,
   getRoundsInRange,
+  getRecentRounds,
   ROUND_INTERVAL_SECONDS,
   ROUND_DURATION_MS
 } = require('../utils/roundScheduler');
@@ -23,6 +24,20 @@ router.get('/state', async (req, res) => {
   } catch (error) {
     console.error('Round state fetch error:', error);
     res.status(500).json({ error: 'Failed to fetch round state' });
+  }
+});
+
+router.get('/history', async (req, res) => {
+  try {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 100;
+    const rounds = await getRecentRounds(limit);
+    res.json({
+      serverTime: new Date().toISOString(),
+      rounds
+    });
+  } catch (error) {
+    console.error('Round history fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch round history' });
   }
 });
 
