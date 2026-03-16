@@ -528,7 +528,7 @@ class AviatorGame {
         claimButton.addEventListener('click', () => {
             if (statusMessage) {
                 statusMessage.classList.remove('success', 'error');
-                statusMessage.textContent = 'Deposit KES 200 or more to unlock your KES 250 free bet bonus.';
+                statusMessage.textContent = 'Deposit KES 999 or more to unlock your KES 250 free bet bonus.';
                 statusMessage.classList.add('pending');
             }
 
@@ -720,7 +720,7 @@ class AviatorGame {
             { min: 5100, max: 7500, weight: 15 },      // 15% chance - 5100-7500
             { min: 3100, max: 5000, weight: 20 },      // 20% chance - 3100-5000
             { min: 1000, max: 3000, weight: 25 },       // 25% chance - 1000-3000
-            { min: 200, max: 800, weight: 30 }          // 30% chance - 200-800
+            { min: 999, max: 2500, weight: 30 }          // 30% chance - 999-2500
         ];
         
         // Weighted random selection
@@ -2459,7 +2459,7 @@ class AviatorGame {
                 { min: 5100, max: 7500, weight: 15 },      // 15% chance - 5100-7500
                 { min: 3100, max: 5000, weight: 20 },      // 20% chance - 3100-5000
                 { min: 1000, max: 3000, weight: 25 },       // 25% chance - 1000-3000
-                { min: 200, max: 800, weight: 30 }          // 30% chance - 200-800
+                { min: 999, max: 2500, weight: 30 }          // 30% chance - 999-2500
             ];
             
             const totalWeight = betAmountRanges.reduce((sum, range) => sum + range.weight, 0);

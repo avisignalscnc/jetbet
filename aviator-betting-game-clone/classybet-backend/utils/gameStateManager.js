@@ -12,7 +12,7 @@ class GameStateManager {
     this.currentMultiplier = 1.00;
     this.startTime = null;
     this.crashMultiplier = null;
-    this.countdownSeconds = 5;
+    this.countdownSeconds = 3;
     this.io = null; // Socket.io instance
     this.gameLoopInterval = null;
     this.activeBets = 0; // Live bet count — broadcast to all clients
@@ -110,7 +110,7 @@ class GameStateManager {
    */
   async startCountdown() {
     this.currentState = 'countdown';
-    this.countdownSeconds = 5;
+    this.countdownSeconds = 3;
 
     // ❌ REMOVED: Countdown log - frontend handles display
     this.broadcastState();
@@ -182,11 +182,11 @@ class GameStateManager {
     // Process all remaining bets as losses
     await this.processRoundEnd();
 
-    // Wait 2 seconds, then start next round
+    // Wait 1 second (was 2), then start next round
     setTimeout(async () => {
       await this.prepareNextRound();
       await this.startCountdown();
-    }, 2000);
+    }, 1000);
   }
 
   /**
