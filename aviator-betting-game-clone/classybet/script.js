@@ -18,8 +18,7 @@ class AviatorGame {
         this.startX = 0;
         this.startY = this.canvas.height;
         this.dotPath = [];
-        this.counter = 1.0;
-        this.counterDepo = []; // Initialize to fix slice() TypeError
+        // Multiplier is now managed entirely by backend
         if (!localStorage.getItem('round_state_cleared')) {
             localStorage.removeItem('roundHistory');
             localStorage.removeItem('round_history');
@@ -33,9 +32,7 @@ class AviatorGame {
         this.isHovering = false; // Track if plane is in hovering mode
         this.gameState = 'waiting'; // 'waiting', 'flying', 'crashed'
         this.roundNumber = 12345;
-        this.lastUpdateTime = 0; // For controlling multiplier update frequency
-        this.roundStartTime = null; // Server-authoritative start time for multiplier formula
-        this.serverClockOffset = 0; // Offset between client and server time
+        // Multiplier timing is now backend-authoritative
 
         // Bet history arrays
         this.betHistory = []; // Personal bet history
@@ -45,8 +42,8 @@ class AviatorGame {
         // Betting state - will be set by authentication system
         this.playerBalance = 0;
         this.bets = {
-            bet1: { placed: false, pending: false, amount: 0, cashedOut: false, multiplier: 0, winnings: 0, apiId: null },
-            bet2: { placed: false, pending: false, amount: 0, cashedOut: false, multiplier: 0, winnings: 0, apiId: null }
+            bet1: { placed: false, pending: false, amount: 0, cashedOut: false, winnings: 0, apiId: null },
+            bet2: { placed: false, pending: false, amount: 0, cashedOut: false, winnings: 0, apiId: null }
         };
 
         // Auto-betting state
@@ -751,29 +748,8 @@ class AviatorGame {
             crashed: false,
             multiplier: null,
             win: null,
-            status: '',
-            targetCashout: null // Store the target multiplier for this bet
+            status: ''
         };
-
-        // Assign a target cashout multiplier for bets that will cash out
-        // Only during waiting phase - they'll cash out when multiplier reaches target during flight
-        if (willCashOut) {
-            // Most players cash out early, some wait for higher multipliers
-            const rand = Math.random();
-            if (rand < 0.4) {
-                // 40% cash out very early (1.2x - 1.8x)
-                bet.targetCashout = 1.2 + Math.random() * 0.6;
-            } else if (rand < 0.7) {
-                // 30% cash out at low-medium (1.8x - 3.0x)
-                bet.targetCashout = 1.8 + Math.random() * 1.2;
-            } else if (rand < 0.9) {
-                // 20% cash out at medium (3.0x - 5.0x)
-                bet.targetCashout = 3.0 + Math.random() * 2.0;
-            } else {
-                // 10% wait for high multipliers (5.0x - 10.0x)
-                bet.targetCashout = 5.0 + Math.random() * 5.0;
-            }
-        }
 
         this.allBetsData.unshift(bet);
         this.allBetsHistory.unshift(bet);
@@ -898,7 +874,9 @@ class AviatorGame {
             }
 
             if (bet.placed && this.gameState === 'flying' && !bet.cashedOut) {
-                const potentialWin = bet.amount * this.counter;
+                // Use backend multiplier if available, otherwise show placeholder
+                const currentMultiplier = this.counter || 1.0;
+                const potentialWin = bet.amount * currentMultiplier;
                 button.textContent = `CASHOUT ${this.formatCurrency(potentialWin)}`;
                 button.className = 'bet-button cashout';
                 button.disabled = false;
@@ -978,7 +956,6 @@ class AviatorGame {
         bet.amount = amountToBet;
         bet.cashedOut = false;
         bet.winnings = 0;
-        bet.multiplier = 0;
 
         // Reserve balance for bet (backend will handle actual deduction via WebSocket)
         this.reservedBalance += amountToBet;
@@ -1011,7 +988,6 @@ class AviatorGame {
         
         bet.pending = false;
         bet.amount = 0;
-        bet.multiplier = 0;
         bet.winnings = 0;
         bet.apiId = null;
         bet.lastCashoutTime = null;
@@ -1033,18 +1009,19 @@ class AviatorGame {
 
         if (!button || !bet.placed || bet.cashedOut) return;
 
-        const winnings = bet.amount * this.counter;
+        // Use backend multiplier for calculations
+        const currentMultiplier = this.counter || 1.0;
+        const winnings = bet.amount * currentMultiplier;
 
         // Update bet state first
         bet.cashedOut = true;
         bet.winnings = winnings;
-        bet.multiplier = this.counter;
 
         // Add to bet history
         this.addBetToHistory({
             amount: bet.amount,
             cashedOut: true,
-            multiplier: this.counter,
+            multiplier: currentMultiplier,
             win: winnings,
             status: 'win'
         });
@@ -1062,10 +1039,10 @@ class AviatorGame {
                 console.log('[CASHOUT] Requesting cashout via WebSocket:', {
                     userId,
                     betId: bet.apiId,
-                    multiplier: this.counter
+                    multiplier: currentMultiplier
                 });
 
-                gameSocket.cashout(userId, bet.apiId, this.counter)
+                gameSocket.cashout(userId, bet.apiId, currentMultiplier)
                     .then(result => {
                         console.log('[CASHOUT] Response received:', result);
                         if (result && result.success) {
@@ -1116,16 +1093,15 @@ class AviatorGame {
 
         this.addBetToHistory({
             amount: bet.amount,
-            multiplier: this.counter,
+            multiplier: currentMultiplier,
             cashedOut: true
         });
 
-        button.textContent = `Won ${this.formatCurrency(winnings)}`;
         button.className = 'bet-button won';
         button.disabled = true;
 
-        this.showGameMessage(`Cashed out: ${this.formatCurrency(winnings)} (${this.counter.toFixed(2)}x)`, 'success');
-        console.log(`[BET] Cashed out ${betType} at ${this.counter.toFixed(2)}x for ${this.formatCurrency(winnings)}`);
+        this.showGameMessage(`Cashed out: ${this.formatCurrency(winnings)} (${currentMultiplier.toFixed(2)}x)`, 'success');
+        console.log(`[BET] Cashed out ${betType} at ${currentMultiplier.toFixed(2)}x for ${this.formatCurrency(winnings)}`);
         this.updateBetButtons();
 
         setTimeout(() => {
@@ -1177,7 +1153,6 @@ class AviatorGame {
                         bet.placed = true;
                         bet.cashedOut = false;
                         bet.winnings = 0;
-                        bet.multiplier = 0;
                         bet.apiId = result.betId;
 
                         totalQueued += bet.amount;
@@ -1570,46 +1545,16 @@ class AviatorGame {
     }
 
     addRoundToHistory(crashPoint) {
-        const roundRecord = {
-            roundNumber: this.roundNumber,
-            timestamp: new Date(),
-            crashPoint: crashPoint,
-            totalBets: this.allBetsData.length,
-            totalWinners: this.allBetsData.filter(bet => bet.cashedOut).length
-        };
-
-        this.roundHistory.unshift(roundRecord);
-
-        if (this.roundHistory.length > 100) {
-            this.roundHistory.pop();
-        }
-
-        // Add to counterDepo and save to localStorage
-        this.counterDepo.unshift(parseFloat(crashPoint));
-        if (this.counterDepo.length > 100) {
-            this.counterDepo.pop();
-        }
-        localStorage.setItem('roundHistory', JSON.stringify(this.counterDepo));
-
-        this.saveRoundHistory();
+        // Let backend handle round history - just update display
+        this.updateCounterDisplay();
     }
 
     saveRoundHistory() {
-        localStorage.setItem('round_history', JSON.stringify(this.roundHistory));
+        // Backend handles round history persistence
     }
 
     loadRoundHistory() {
-        const history = localStorage.getItem('round_history');
-        if (history) {
-            this.roundHistory = JSON.parse(history);
-        }
-
-        const depoHistory = localStorage.getItem('roundHistory');
-        if (depoHistory) {
-            this.counterDepo = JSON.parse(depoHistory);
-        }
-
-        // Trigger official historical sync from backend
+        // Load round history from backend
         this.fetchBackendHistory();
     }
 
@@ -1630,9 +1575,6 @@ class AviatorGame {
                         totalBets: 0, // Backend could provide this if we extended schema
                         totalWinners: 0
                     }));
-
-                    localStorage.setItem('roundHistory', JSON.stringify(this.counterDepo));
-                    localStorage.setItem('round_history', JSON.stringify(this.roundHistory));
                     
                     this.updateCounterDisplay();
                 }
@@ -1822,7 +1764,6 @@ class AviatorGame {
             bet.cashedOut = false;
             bet.pending = false;
             bet.amount = 0;
-            bet.multiplier = 0;
             bet.winnings = 0;
         });
     }
@@ -1928,7 +1869,6 @@ class AviatorGame {
             bet.cashedOut = false;
             bet.pending = false;
             bet.amount = 0;
-            bet.multiplier = 0;
             bet.winnings = 0;
         });
     }
@@ -1983,21 +1923,13 @@ class AviatorGame {
 
     draw() {
         // ─────────────────────────────────────────────────────────────────────
-        // SYNCHRONIZED MULTIPLIER FORMULA
-        // Identical to backend: Math.pow(1.0024, elapsed * 100)
-        // Uses server-authoritative startTime so all clients stay in lockstep.
+        // MULTIPLIER IS NOW BACKEND-AUTHORITATIVE
+        // No local calculation - multiplier comes from server game state updates
         // ─────────────────────────────────────────────────────────────────────
-        if (this.roundStartTime) {
-            // Apply server clock offset to ensure calculation matches server time
-            const now = Date.now() + (this.serverClockOffset || 0);
-            const elapsed = (now - this.roundStartTime) / 1000;
-            // Clamp to 1.00 floor (e.g. if clock skew makes elapsed negative)
-            this.counter = Math.max(1.00, Math.pow(1.0012, elapsed * 100));
-        }
 
-        // Always update the counter display every frame (60 FPS smooth)
+        // Update counter display only when multiplier is available from backend
         const counterElement = document.getElementById('counter');
-        if (counterElement) {
+        if (counterElement && this.counter !== undefined && this.counter !== null) {
             counterElement.textContent = this.counter.toFixed(2) + 'x';
             this.updateCounterGlow(counterElement, this.counter);
         }
@@ -2006,22 +1938,19 @@ class AviatorGame {
         // sole authoritative crash trigger. A local guard would use a stale
         // randomStop from the PREVIOUS round and crash the animation immediately.
 
-        // Check for auto-cashout conditions
-        this.handleAutoCashout();
+        // NOTE: Auto-cashout is now handled by backend - no local checks needed
 
         // Update bet buttons with potential cashout amounts
         this.updateBetButtons();
 
-        // Process cashouts for bets that reached their target multiplier
-        // This will update display automatically when cashouts happen
-        this.processCashouts();
+        // NOTE: Cashout processing is now handled by backend WebSocket events
 
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Update position - plane flies from bottom left toward top right with realistic trajectory
 
-        if (this.counter < 1000000) { // Practically infinite, loop runs until server-driven crash
+        if (this.gameState === 'flying') { // Plane flies during backend-controlled flying state
             // Check if plane should be in hovering mode (after 60% of canvas width)
             const hoverPoint = this.canvas.width * 0.6;
             // ... (rest of movement logic)
@@ -2097,33 +2026,7 @@ class AviatorGame {
         this.animationId = requestAnimationFrame(() => this.draw());
     }
 
-    processCashouts() {
-        // Check all bets and cash out those that reached their target multiplier
-        // Only works during flying phase - prevents premature cashouts
-        if (this.gameState !== 'flying') return;
-
-        let cashedOutThisFrame = false;
-
-        this.allBetsData.forEach(bet => {
-            // Only process bets that have a target, aren't cashed out yet, and have empty status
-            if (bet.targetCashout && !bet.cashedOut && !bet.crashed && bet.status === '') {
-                // Cash out ONLY when current multiplier reaches or exceeds target
-                // This ensures no one cashes out before the multiplier reaches that value
-                if (this.counter >= bet.targetCashout) {
-                    bet.cashedOut = true;
-                    bet.multiplier = parseFloat(this.counter.toFixed(2));
-                    bet.win = parseFloat((bet.amount * bet.multiplier).toFixed(2));
-                    bet.status = `${bet.multiplier}x`;
-                    cashedOutThisFrame = true;
-                }
-            }
-        });
-
-        // Update display if any cashouts happened this frame
-        if (cashedOutThisFrame) {
-            this.updateAllBetsDisplay();
-        }
-    }
+    // Cashout processing is now handled by backend WebSocket events
 
     drawPlaneShadow() {
         if (this.dotPath.length > 2) {
@@ -2204,13 +2107,9 @@ class AviatorGame {
         // Start crash animation - plane disappears upwards quickly
         this.animateCrash();
 
-        // Store the crash multiplier
-        const crashMultiplier = this.forcedCrashMultiplier || this.counter;
+        // Store the crash multiplier from backend
+        const crashMultiplier = this.counter || 1.0;
         const crashMultiplierStr = crashMultiplier.toFixed(2);
-
-        // Clear the active round BEFORE triggering async operations
-        this.activeRoundMeta = null;
-        this.forcedCrashMultiplier = null;
 
         // Backend round end is handled via WebSocket game state manager
         // No need for explicit endRound API call
@@ -2253,7 +2152,6 @@ class AviatorGame {
                 // Update the bet state
                 bet.crashed = true;
                 bet.status = 'loss';
-                bet.multiplier = currentMultiplier;
                 bet.winnings = 0;
             }
         });
@@ -2809,39 +2707,7 @@ class AviatorGame {
         document.getElementById(`auto-profit-${betNumber}`).textContent = this.formatCurrency(state.profit);
     }
 
-    handleAutoCashout() {
-        // Check auto-cashout conditions during game
-        if (this.gameState !== 'flying') return;
-
-        ['bet1', 'bet2'].forEach(betType => {
-            const bet = this.bets[betType];
-            if (!bet.placed || bet.cashedOut) return;
-
-            const betNumber = betType === 'bet1' ? '1' : '2';
-
-            // Check if auto-cashout is enabled for this bet
-            const autoCashoutToggle = document.getElementById(`auto-cashout-toggle-${betNumber}`);
-            if (!autoCashoutToggle || !autoCashoutToggle.checked) {
-                return; // Auto-cashout is not enabled for this bet
-            }
-
-            const autoCashoutValue = parseFloat(document.getElementById(`auto-cashout-value-${betNumber}`).value);
-
-            // Only auto-cashout if the value is valid and the multiplier has reached it
-            if (autoCashoutValue > 1.0 && this.counter >= autoCashoutValue) {
-                this.cashOut(betType);
-
-                // Update auto-bet stats if auto-betting is active
-                const state = this.autoBetState[betType];
-                if (state && state.active) {
-                    state.wins++;
-                    const winAmount = bet.amount * autoCashoutValue - bet.amount;
-                    state.profit += winAmount;
-                    this.updateAutoBetStats(betType);
-                }
-            }
-        });
-    }
+    // Auto-cashout is now handled by backend WebSocket events
 
     handleGameStateUpdate(state) {
         if (!state) return;
@@ -2869,15 +2735,8 @@ class AviatorGame {
                 if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
             }
 
-            if (state.timestamp) {
-                this.serverClockOffset = state.timestamp - Date.now();
-            }
-
-            if (state.startTime) {
-                this.roundStartTime = state.startTime;
-            }
-
-            if (state.multiplier) {
+            // Update multiplier from backend
+            if (state.multiplier !== undefined) {
                 this.counter = state.multiplier;
             }
 
@@ -2900,7 +2759,8 @@ class AviatorGame {
 
         // ── CRASHED ───────────────────────────────────────────────────────────
         else if (incomingState === 'crashed' && this.gameState === 'flying') {
-            if (state.crashMultiplier) {
+            // Update crash multiplier from backend
+            if (state.crashMultiplier !== undefined) {
                 this.counter = state.crashMultiplier;
             }
             cancelAnimationFrame(this.animationId);
@@ -2943,7 +2803,7 @@ class AviatorGame {
     _serverDrivenStart() {
         this.gameState = 'flying';
         this.isFlying = true;
-        this.counter = 1.00;
+        // Counter is set by backend game state updates
         
         // Reset canvas
         this.x = this.startX;
@@ -2958,13 +2818,8 @@ class AviatorGame {
         const bgImage = document.getElementById('bg-image');
         if (bgImage) bgImage.classList.add('rotating');
 
-        const counterElement = document.getElementById('counter');
-        if (counterElement) {
-            counterElement.textContent = '1.00x';
-            counterElement.className = '';
-            this.updateCounterGlow(counterElement, 1.0);
-        }
-
+        // Counter display will be updated by backend game state
+        
         // Activate queued bets for the new round
         this.activateQueuedBets();
         this.executeAutoBets();
@@ -2975,8 +2830,7 @@ class AviatorGame {
     }
 
     resetForNewRound() {
-        // Clear old round artifacts
-        this.counter = 1.00;
+        // Clear old round artifacts - counter will be set by backend
         const counterElement = document.getElementById('counter');
         if (counterElement) {
             counterElement.textContent = '';
