@@ -3178,10 +3178,14 @@ async function initializeWebSocket() {
         ? 'http://localhost:3001'
         : 'https://jetbet-m26i.onrender.com';
 
+    // Create connection status indicator
+    createConnectionStatusIndicator();
+
     try {
         console.log('[WebSocket] Connecting to:', API_BASE_URL);
         await gameSocket.connect(API_BASE_URL);
         console.log('[WebSocket] ✅ Connected to game server');
+        updateConnectionStatus('connected');
 
         // Listen for game state updates
         gameSocket.onStateUpdate = (state) => {
@@ -3190,8 +3194,85 @@ async function initializeWebSocket() {
             }
         };
 
+        // Listen for connection events
+        gameSocket.socket.on('disconnect', () => {
+            updateConnectionStatus('disconnected');
+        });
+
+        gameSocket.socket.on('connect', () => {
+            updateConnectionStatus('connected');
+        });
+
+        gameSocket.socket.on('connect_error', () => {
+            updateConnectionStatus('error');
+        });
+
     } catch (error) {
         console.error('[WebSocket] ❌ Connection failed:', error);
+        updateConnectionStatus('error');
+    }
+}
+
+// Create connection status indicator
+function createConnectionStatusIndicator() {
+    const statusDiv = document.createElement('div');
+    statusDiv.id = 'connection-status';
+    statusDiv.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 10000;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    `;
+    document.body.appendChild(statusDiv);
+    updateConnectionStatus('connecting');
+}
+
+// Update connection status indicator
+function updateConnectionStatus(status) {
+    const statusDiv = document.getElementById('connection-status');
+    if (!statusDiv) return;
+
+    const statusConfig = {
+        connecting: {
+            text: '🔄 Connecting...',
+            bg: 'linear-gradient(135deg, #ff9800, #f57c00)',
+            color: 'white'
+        },
+        connected: {
+            text: '🟢 Connected',
+            bg: 'linear-gradient(135deg, #4caf50, #388e3c)',
+            color: 'white'
+        },
+        disconnected: {
+            text: '🔴 Disconnected',
+            bg: 'linear-gradient(135deg, #f44336, #d32f2f)',
+            color: 'white'
+        },
+        error: {
+            text: '⚠️ Connection Error',
+            bg: 'linear-gradient(135deg, #ff5722, #e64a19)',
+            color: 'white'
+        }
+    };
+
+    const config = statusConfig[status] || statusConfig.error;
+    statusDiv.textContent = config.text;
+    statusDiv.style.background = config.bg;
+    statusDiv.style.color = config.color;
+
+    // Auto-hide connected status after 3 seconds
+    if (status === 'connected') {
+        setTimeout(() => {
+            statusDiv.style.opacity = '0.3';
+        }, 3000);
+    } else {
+        statusDiv.style.opacity = '1';
     }
 }
 
