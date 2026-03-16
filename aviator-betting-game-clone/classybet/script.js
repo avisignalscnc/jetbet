@@ -1545,8 +1545,24 @@ class AviatorGame {
     }
 
     addRoundToHistory(crashPoint) {
-        // Let backend handle round history - just update display
+        // Add crashed round to the front of the history display
+        if (!this.counterDepo) {
+            this.counterDepo = [];
+        }
+        
+        // Add to front of array
+        this.counterDepo.unshift(parseFloat(crashPoint));
+        
+        // Keep only last 100 rounds
+        if (this.counterDepo.length > 100) {
+            this.counterDepo.pop();
+        }
+        
+        // Update the display immediately
         this.updateCounterDisplay();
+        
+        // Fetch updated history from backend in background
+        this.fetchBackendHistory();
     }
 
     saveRoundHistory() {
@@ -2880,7 +2896,7 @@ class AviatorGame {
 
         const progressBar = overlay.querySelector('.countdown-progress');
         if (progressBar) {
-            const progress = ((5 - countdown) / 5) * 100;
+            const progress = ((2.5 - countdown) / 2.5) * 100;
             progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
         }
 

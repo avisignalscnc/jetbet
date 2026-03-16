@@ -12,7 +12,7 @@ class GameStateManager {
     this.currentMultiplier = 1.00;
     this.startTime = null;
     this.crashMultiplier = null;
-    this.countdownSeconds = 3;
+    this.countdownSeconds = 2.5;
     this.io = null; // Socket.io instance
     this.gameLoopInterval = null;
     this.activeBets = 0; // Live bet count — broadcast to all clients
@@ -106,11 +106,11 @@ class GameStateManager {
   }
 
   /**
-   * Countdown phase (5 seconds)
+   * Countdown phase (2.5 seconds)
    */
   async startCountdown() {
     this.currentState = 'countdown';
-    this.countdownSeconds = 3;
+    this.countdownSeconds = 2.5;
 
     // ❌ REMOVED: Countdown log - frontend handles display
     this.broadcastState();
@@ -171,10 +171,10 @@ class GameStateManager {
     // Broadcast crash state immediately
     this.broadcastState();
 
-    // Start countdown after 500ms (allows crash animation to show)
+    // Start countdown after 2500ms (2.5 seconds to show "FLEW AWAY")
     setTimeout(async () => {
       await this.startCountdown();
-    }, 500);
+    }, 2500);
 
     // Process round end in background during countdown
     this.processRoundEndAsync();
@@ -226,6 +226,9 @@ class GameStateManager {
           }
         }
       );
+
+      // Reset active bets counter for the round
+      this.activeBets = 0;
 
       // ❌ REMOVED: Log - silent processing
     } catch (error) {
