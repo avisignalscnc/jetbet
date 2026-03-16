@@ -3128,12 +3128,18 @@ class AviatorGame {
                 if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
             }
 
-            // Capture the server-authoritative startTime once per round
+            // ALWAYS sync the server-authoritative startTime so draw() can
+            // compute the correct multiplier even if the local game loop already
+            // transitioned to 'flying' before this WebSocket event arrived.
+            if (state.startTime) {
+                this.roundStartTime = state.startTime;
+            }
+
+            // Only start the animation loop on the first transition to 'flying'.
+            // If the local loop already set gameState to 'flying' (via resetGame/startGame),
+            // we just update roundStartTime above and the running draw() loop
+            // will now compute the correct server-anchored multiplier immediately.
             if (this.gameState !== 'flying') {
-                this.roundStartTime = state.startTime || Date.now();
-                // Note: crashMultiplier is null during flying (server hides it)
-                // so we leave forcedCrashMultiplier at whatever it was set to
-                // by the previous 'crashed' event. _serverDrivenStart handles it.
                 this._serverDrivenStart();
             }
 
