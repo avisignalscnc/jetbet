@@ -24,10 +24,7 @@ class AviatorGame {
             localStorage.removeItem('round_history');
             localStorage.setItem('round_state_cleared', 'true');
         }
-        // Load round history from localStorage or use default if not exists
-        this.counterDepo = JSON.parse(localStorage.getItem('roundHistory') || '[1.01, 18.45, 2.00, 5.21, 1.22, 1.25, 2.03, 4.55, 65.11, 1.03, 1.10, 3.01, 8.85, 6.95, 11.01, 2.07, 4.05, 1.51, 1.02, 1.95, 1.05, 3.99, 2.89, 4.09, 11.20, 2.55]');
-        this.randomStop = Math.random() * (10 - 0.8) + 0.8;
-        this.isFlying = true;
+        this.isFlying = false;
         this.hoverOffset = 0; // For vertical hovering animation
         this.animationId = null;
         this.pathX = 0; // Separate variable for path progression
@@ -59,14 +56,6 @@ class AviatorGame {
 
         this.minBetAmount = 10;
         this.reservedBalance = 0;
-        this.activeRoundMeta = null;
-        this.nextRoundMeta = null;
-        this.roundQueue = []; // Queue of upcoming rounds from backend
-        this.roundSyncInProgress = false;
-        this._ensuringRound = false;
-        this.forcedCrashMultiplier = null;
-        this.backendControlled = true; // Always use backend multipliers
-        this.autoStartEnabled = true; // Auto-start game loop
 
         this.loadImage();
         this.initializeElements();
@@ -74,12 +63,6 @@ class AviatorGame {
         this.updateBalance();
         this.updateCounterDisplay();
 
-        // Auto-start game loop after initialization
-        if (this.autoStartEnabled && typeof this.initializeGameLoop === 'function') {
-            this.initializeGameLoop();
-        } else if (typeof this.startGame === 'function') {
-            this.startGame();
-        }
         this.initializeAllBets();
         this.setupGameMenu();
         this.setupResponsiveLayout();
@@ -2049,9 +2032,10 @@ class AviatorGame {
 
         // Update position - plane flies from bottom left toward top right with realistic trajectory
 
-        if (this.counter < this.randomStop) {
+        if (this.counter < 1000000) { // Practically infinite, loop runs until server-driven crash
             // Check if plane should be in hovering mode (after 60% of canvas width)
             const hoverPoint = this.canvas.width * 0.6;
+            // ... (rest of movement logic)
 
             if (this.x < hoverPoint) {
                 // Phase 1: Horizontal movement for first 5px (more visible horizontal phase)
@@ -2298,11 +2282,8 @@ class AviatorGame {
         this.updateCounterDisplay();
 
         this.messageElement.textContent = 'Round ended - Place your bet for the next round';
-
-        // Wait 2 seconds, then start countdown
-        setTimeout(() => {
-            this.startCountdown();
-        }, 2000);
+        
+        // NO LOCAL SETTIMEOUT HERE - game waits for server 'countdown' state
     }
 
     animateCrash() {
@@ -2380,250 +2361,7 @@ class AviatorGame {
         }, 3000);
     }
 
-    async startCountdown() {
-        this.gameState = 'waiting';
-
-        try {
-            await this.ensureRoundMeta();
-        } catch (error) {
-            console.warn('Failed to prepare next round:', error);
-            setTimeout(() => this.startCountdown(), 1000);
-            return;
-        }
-
-        // Reset and seed All Bets for the upcoming round during waiting only
-        this.allBetsData = [];
-        this.betCount = 0;
-
-        // Reset bet count display to 0 immediately
-        this.updateBetCount();
-        this.updateAllBetsDisplay();
-
-        // Generate bets gradually to simulate real-time betting
-        const targetBetCount = 500 + Math.floor(Math.random() * 200); // 500-700 target bets
-        const betsPerBatch = 25; // Generate 25 bets per batch
-        const batchInterval = 100; // Every 100ms
-
-        let betsGenerated = 0;
-        const generateBetsInterval = setInterval(() => {
-            const batchSize = Math.min(betsPerBatch, targetBetCount - betsGenerated);
-            for (let i = 0; i < batchSize; i++) {
-                this.generateRandomBet();
-            }
-            betsGenerated += batchSize;
-
-            // Update display to show growing bet list
-            this.updateAllBetsDisplay();
-            this.updateBetCount();
-
-            // Stop when we reach target or countdown ends
-            if (betsGenerated >= targetBetCount) {
-                clearInterval(generateBetsInterval);
-            }
-        }, batchInterval);
-
-        // Store interval ID so we can clear it if needed
-        this.betGenerationInterval = generateBetsInterval;
-
-        let countdown = 5; // Extended to 5 seconds
-
-        // Clear the main counter display
-        const counterElement = document.getElementById('counter');
-        counterElement.innerHTML = '';
-        counterElement.className = 'waiting';
-
-        // Create simple overlay on the game area
-        const gameArea = document.getElementById('counterWrapper');
-        const overlay = document.createElement('div');
-        overlay.className = 'countdown-overlay';
-        overlay.style.cssText = `
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            text-align: center;
-            pointer-events: none;
-        `;
-
-        overlay.innerHTML = `
-            <!-- UFC Logo above loading bar -->
-            <div style="
-                display: flex;
-                justify-content: center;
-                margin-bottom: 20px;
-            ">
-                <img src="ufc.svg" alt="UFC" height="100" style="opacity: 0.9;">
-            </div>
-            
-            <!-- Loading Bar -->
-            <div style="
-                width: 200px;
-                height: 6px;
-                background: rgba(255, 255, 255, 0.3);
-                border-radius: 3px;
-                margin: 0 auto;
-                overflow: hidden;
-                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-            ">
-                <div class="countdown-progress" style="
-                    height: 100%;
-                    background: linear-gradient(90deg, #ff4444, #ff6666);
-                    width: 0%;
-                    transition: width 0.3s ease;
-                    border-radius: 3px;
-                "></div>
-            </div>
-            
-            <!-- Spribe Logo below loading bar -->
-            <div style="
-                display: flex;
-                justify-content: center;
-                margin-top: 20px;
-            ">
-                <img src="spribe.svg" alt="Spribe" height="55" style="opacity: 0.8;">
-            </div>
-        `;
-
-        gameArea.appendChild(overlay);
-
-        // Enable betting immediately after crash
-        Object.keys(this.bets).forEach(betType => {
-            const bet = this.bets[betType];
-            const button = betType === 'bet1' ? this.betButton1 : this.betButton2;
-            if (!button) return;
-
-            if (bet.pending) {
-                button.textContent = `Cancel ${this.formatCurrency(bet.amount)} (Queued)`;
-                button.className = 'bet-button cancel';
-                button.style.animation = '';
-            } else if (!bet.placed) {
-                button.textContent = 'BET';
-                button.className = 'bet-button';
-                button.style.animation = '';
-            }
-        });
-
-        // Store ID so _serverDrivenStart() can cancel this if the server
-        // fires 'flying' before our local timer hits zero (prevents double loop)
-        this._countdownInterval = setInterval(() => {
-            countdown--;
-
-            // Update loading bar progress
-            const progressBar = overlay.querySelector('.countdown-progress');
-            if (progressBar) {
-                const progress = ((5 - countdown) / 5) * 100;
-                progressBar.style.width = `${progress}%`;
-            }
-
-            if (countdown <= 0) {
-                clearInterval(this._countdownInterval);
-                this._countdownInterval = null;
-
-                // Clear bet generation interval if still running
-                if (this.betGenerationInterval) {
-                    clearInterval(this.betGenerationInterval);
-                    this.betGenerationInterval = null;
-                }
-
-                // Remove overlay
-                if (overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-
-                // Reset counter appearance
-                counterElement.className = '';
-
-                // Update button states for placed bets when round starts
-                Object.keys(this.bets).forEach(betType => {
-                    const bet = this.bets[betType];
-                    const button = betType === 'bet1' ? this.betButton1 : this.betButton2;
-                    if (bet.placed) {
-                        button.textContent = `${this.formatCurrency(bet.amount)} ACTIVE`;
-                        button.className = 'bet-button placed';
-                    }
-                });
-
-                // Add 1 second wait before starting the game
-                setTimeout(() => {
-                    this.resetGame();
-                }, 1000);
-            }
-        }, 1000);
-
-    }
-
-    resetGame() {
-        // Always use backend multiplier - no random fallback
-        if (!this.forcedCrashMultiplier) {
-            console.error('No backend multiplier available! Game cannot start.');
-            this.randomStop = 1.5; // Emergency fallback
-        } else {
-            this.randomStop = this.forcedCrashMultiplier;
-        }
-        this.counter = 1.0;
-        this.roundStartTime = null; // Will be set fresh when server broadcasts 'flying'
-        this.x = this.startX; // Reset to starting position (bottom left)
-        this.y = this.startY; // Reset to starting position (bottom left)
-        this.pathX = 0; // Reset path X position
-        this.pathY = this.canvas.height; // Reset path Y position
-        this.isHovering = false; // Reset hovering state
-        this.hoverOffset = 0; // Reset hover animation
-        this.dotPath = [];
-        this.isFlying = true;
-        this.messageElement.textContent = '';
-
-        // Reset counter display
-        const counterElement = document.getElementById('counter');
-        counterElement.textContent = '1.00x';
-        counterElement.className = '';
-
-        // Set initial counter glow for reset (starts at 1.00x - blue glow)
-        this.updateCounterGlow(counterElement, 1.0);
-
-        // Reset ALL betting states for fresh round
-        Object.keys(this.bets).forEach(betType => {
-            const bet = this.bets[betType];
-            const button = betType === 'bet1' ? this.betButton1 : this.betButton2;
-
-            if (!button) {
-                return;
-            }
-
-            // Clear any cooldown timers and disabled states
-            bet.lastCashoutTime = null;
-            button.removeAttribute('data-disabled-until-reset');
-            button.disabled = false;
-
-            if (bet.pending && bet.amount >= this.minBetAmount) {
-                // Queue activation happens below after loop to adjust balances
-                return;
-            }
-
-            // Reset non-queued bets
-            bet.placed = false;
-            bet.cashedOut = false;
-            bet.pending = false;
-            bet.amount = 0;
-            bet.multiplier = 0;
-            bet.winnings = 0;
-            bet.apiId = null;
-
-            button.textContent = 'BET';
-            button.className = 'bet-button';
-        });
-
-        // Activate any bets that were queued during the previous round
-        this.activateQueuedBets();
-
-        // DON'T clear bets here - they remain visible during flight
-        // Bets will be cleared and repopulated during startCountdown (waiting phase)
-
-        // Execute auto-bets for new round ONLY if auto-betting is enabled
-        this.executeAutoBets();
-
-        this.startGame();
-    }
+    // startCountdown and resetGame REMOVED - everything is handled via server broadcasts in handleGameStateUpdate
 
     setupBetsTabs() {
         // Setup profile and deposit buttons
@@ -3128,7 +2866,13 @@ class AviatorGame {
 
         // ── FLYING ────────────────────────────────────────────────────────────
         if (incomingState === 'flying') {
-            // Sync backend bet count so all clients show the same number
+            // Remove countdown overlay
+            const existingOverlay = document.querySelector('.countdown-overlay');
+            if (existingOverlay && existingOverlay.parentNode) {
+                existingOverlay.parentNode.removeChild(existingOverlay);
+            }
+
+            // Sync backend bet count
             if (typeof state.activeBets === 'number') {
                 const betCountEl = document.getElementById('bet-count');
                 const mobileBetCountEl = document.getElementById('mobile-bet-count');
@@ -3140,27 +2884,20 @@ class AviatorGame {
                 this.serverClockOffset = state.timestamp - Date.now();
             }
 
-            // ALWAYS sync the server-authoritative startTime so draw() can
-            // compute the correct multiplier even if the local game loop already
-            // transitioned to 'flying' before this WebSocket event arrived.
             if (state.startTime) {
                 this.roundStartTime = state.startTime;
             }
 
-            // Sync multiplier directly from server state as a baseline correction
             if (state.multiplier) {
                 this.counter = state.multiplier;
             }
 
-            // Only start the animation loop on the first transition to 'flying'.
-            // If the local loop already set gameState to 'flying' (via resetGame/startGame),
-            // we just update roundStartTime above and the running draw() loop
-            // will now compute the correct server-anchored multiplier immediately.
+            // Start animation loop if not flying
             if (this.gameState !== 'flying') {
                 this._serverDrivenStart();
             }
 
-            // Update cash-out button labels for active bets
+            // Update bet buttons to 'Cash Out' if properly placed
             Object.keys(this.bets).forEach(betType => {
                 const bet = this.bets[betType];
                 const button = betType === 'bet1' ? this.betButton1 : this.betButton2;
@@ -3174,64 +2911,44 @@ class AviatorGame {
 
         // ── CRASHED ───────────────────────────────────────────────────────────
         else if (incomingState === 'crashed' && this.gameState === 'flying') {
-            // Server says crash – accept server crash multiplier as authoritative
             if (state.crashMultiplier) {
-                this.forcedCrashMultiplier = state.crashMultiplier;
-                // Snap counter to exact server crash value so UI matches
                 this.counter = state.crashMultiplier;
             }
-            // Stop animation and run crash logic
             cancelAnimationFrame(this.animationId);
+            this.animationId = null;
             this.isFlying = false;
             this.handleCrash();
         }
 
         // ── COUNTDOWN ─────────────────────────────────────────────────────────
         else if (incomingState === 'countdown') {
-            // Mirror the server countdown value so all clients show identical numbers
-            if (typeof state.countdown === 'number') {
-                // Update countdown progress bar if it exists
-                const progressBar = document.querySelector('.countdown-progress');
-                if (progressBar) {
-                    const progress = ((5 - state.countdown) / 5) * 100;
-                    progressBar.style.width = `${Math.min(100, progress)}%`;
-                }
+            this.gameState = 'countdown';
+            this.renderCountdownOverlay(state.countdown);
+            
+            // Sync current bet count during countdown if provided
+            if (typeof state.activeBets === 'number') {
+                const betCountEl = document.getElementById('bet-count');
+                const mobileBetCountEl = document.getElementById('mobile-bet-count');
+                if (betCountEl) betCountEl.textContent = state.activeBets;
+                if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
             }
         }
 
         // ── WAITING ───────────────────────────────────────────────────────────
-        else if (incomingState === 'waiting' && this.gameState !== 'waiting') {
-            // Server moved to waiting — sync round data for next round
-            if (state.crashMultiplier !== undefined) {
-                // The next round's crash point is not revealed yet; discard any stale value
+        else if (incomingState === 'waiting') {
+            if (this.gameState !== 'waiting') {
+                this.gameState = 'waiting';
+                this.resetForNewRound();
             }
         }
     }
 
-    /**
-     * Start the game loop driven by a server 'flying' event.
-     * Skips local countdown and jumps straight into the animation.
-     */
     _serverDrivenStart() {
-        // Cancel local countdown interval to prevent it firing resetGame()
-        // and starting a second, conflicting animation loop
-        if (this._countdownInterval) {
-            clearInterval(this._countdownInterval);
-            this._countdownInterval = null;
-        }
-        // Also clear bet-generation interval
-        if (this.betGenerationInterval) {
-            clearInterval(this.betGenerationInterval);
-            this.betGenerationInterval = null;
-        }
-
-        // Remove any countdown overlay that the local timer may have created
-        const existingOverlay = document.querySelector('.countdown-overlay');
-        if (existingOverlay && existingOverlay.parentNode) {
-            existingOverlay.parentNode.removeChild(existingOverlay);
-        }
-
-        // Reset canvas state
+        this.gameState = 'flying';
+        this.isFlying = true;
+        this.counter = 1.00;
+        
+        // Reset canvas
         this.x = this.startX;
         this.y = this.startY;
         this.pathX = 0;
@@ -3239,16 +2956,11 @@ class AviatorGame {
         this.isHovering = false;
         this.hoverOffset = 0;
         this.dotPath = [];
-        this.isFlying = true;
-        this.counter = 1.00;
-        this.gameState = 'flying';
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Use the crash point received from the server (already set in forcedCrashMultiplier)
-        if (this.forcedCrashMultiplier) {
-            this.randomStop = this.forcedCrashMultiplier;
-        }
+        const bgImage = document.getElementById('bg-image');
+        if (bgImage) bgImage.classList.add('rotating');
 
-        // Reset counter display
         const counterElement = document.getElementById('counter');
         if (counterElement) {
             counterElement.textContent = '1.00x';
@@ -3256,16 +2968,76 @@ class AviatorGame {
             this.updateCounterGlow(counterElement, 1.0);
         }
 
-        const bgImage = document.getElementById('bg-image');
-        if (bgImage) bgImage.classList.add('rotating');
-
-        // Activate any queued bets now
+        // Activate queued bets for the new round
         this.activateQueuedBets();
         this.executeAutoBets();
 
-        // Kick off animation
+        // Start local animation loop
         cancelAnimationFrame(this.animationId);
         this.animationId = requestAnimationFrame(() => this.draw());
+    }
+
+    resetForNewRound() {
+        // Clear old round artifacts
+        this.counter = 1.00;
+        const counterElement = document.getElementById('counter');
+        if (counterElement) {
+            counterElement.textContent = '';
+            counterElement.className = 'waiting';
+        }
+        
+        // Reset betting buttons for those not in auto-bet
+        Object.keys(this.bets).forEach(betType => {
+            const bet = this.bets[betType];
+            const button = betType === 'bet1' ? this.betButton1 : this.betButton2;
+            if (button && !bet.pending) {
+                button.textContent = 'BET';
+                button.className = 'bet-button';
+                button.disabled = false;
+            }
+        });
+    }
+
+    renderCountdownOverlay(countdown) {
+        let overlay = document.querySelector('.countdown-overlay');
+        if (!overlay) {
+            const gameArea = document.getElementById('counterWrapper');
+            overlay = document.createElement('div');
+            overlay.className = 'countdown-overlay';
+            overlay.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 1000;
+                text-align: center;
+                pointer-events: none;
+            `;
+            overlay.innerHTML = `
+                <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+                    <img src="ufc.svg" alt="UFC" height="100" style="opacity: 0.9;">
+                </div>
+                <div style="width: 200px; height: 6px; background: rgba(255, 255, 255, 0.3); border-radius: 3px; margin: 0 auto; overflow: hidden; box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);">
+                    <div class="countdown-progress" style="height: 100%; background: linear-gradient(90deg, #ff4444, #ff6666); width: 0%; transition: width 0.3s ease; border-radius: 3px;"></div>
+                </div>
+                <div style="display: flex; justify-content: center; margin-top: 20px;">
+                    <img src="spribe.svg" alt="Spribe" height="55" style="opacity: 0.8;">
+                </div>
+            `;
+            gameArea.appendChild(overlay);
+        }
+
+        const progressBar = overlay.querySelector('.countdown-progress');
+        if (progressBar) {
+            const progress = ((5 - countdown) / 5) * 100;
+            progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+        }
+
+        const counterElement = document.getElementById('counter');
+        if (counterElement) {
+            counterElement.innerHTML = '';
+            counterElement.className = 'waiting';
+        }
     }
 
     executeAutoBets() {
@@ -4018,16 +3790,7 @@ let integrateGameRetries = 0;
 // OLD INTEGRATION REMOVED - Now using syncBetWithBackend for all bet/cashout operations
 // This prevents duplicate balance deductions and ensures backend is source of truth
 
-// Initialize game loop with backend round synchronization
-AviatorGame.prototype.initializeGameLoop = async function () {
-    console.log('Initializing backend-controlled game loop...');
-
-    // Fetch initial round schedule
-    await this.fetchRoundSchedule();
-
-    // Start the countdown for first round
-    this.startCountdown();
-};
+// initializeGameLoop REMOVED - everything is server-driven
 
 // Initialize everything when page loads
 document.addEventListener('DOMContentLoaded', () => {
