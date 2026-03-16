@@ -148,8 +148,8 @@ class GameStateManager {
     const flyingInterval = setInterval(() => {
       const elapsed = (Date.now() - this.startTime) / 1000;
       
-      // Calculate multiplier based on time (exponential growth)
-      this.currentMultiplier = Math.pow(1.0024, elapsed * 100);
+      // Calculate multiplier based on time (more gradual growth: 1.0012 base)
+      this.currentMultiplier = Math.pow(1.0012, elapsed * 100);
 
       // Check if we've reached crash point
       if (this.currentMultiplier >= this.crashMultiplier) {
@@ -182,11 +182,11 @@ class GameStateManager {
     // Process all remaining bets as losses
     await this.processRoundEnd();
 
-    // Wait 1 second (was 2), then start next round
+    // Wait 500ms (was 1000ms), then start next round
     setTimeout(async () => {
       await this.prepareNextRound();
       await this.startCountdown();
-    }, 1000);
+    }, 500);
   }
 
   /**

@@ -2912,6 +2912,14 @@ class AviatorGame {
         // ── COUNTDOWN ─────────────────────────────────────────────────────────
         else if (incomingState === 'countdown') {
             this.gameState = 'countdown';
+            
+            // Clear "FLEW AWAY" if it was showing
+            const counterElement = document.getElementById('counter');
+            if (counterElement) {
+                counterElement.innerHTML = '';
+                counterElement.className = 'waiting';
+            }
+
             this.renderCountdownOverlay(state.countdown);
             
             // Sync current bet count during countdown if provided
