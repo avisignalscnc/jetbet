@@ -228,6 +228,9 @@ class GameStateManager {
       multiplier: this.currentMultiplier,
       countdown: this.countdownSeconds,
       crashMultiplier: this.currentState === 'crashed' ? this.crashMultiplier : null,
+      // startTime lets the frontend reproduce multiplier using the exact same formula:
+      // Math.pow(1.0024, elapsed * 100) where elapsed = (Date.now() - startTime) / 1000
+      startTime: this.startTime,
       timestamp: Date.now()
     };
 
@@ -244,6 +247,7 @@ class GameStateManager {
       multiplier: this.currentMultiplier,
       countdown: this.countdownSeconds,
       crashMultiplier: this.currentState === 'crashed' ? this.crashMultiplier : null,
+      startTime: this.startTime,
       timestamp: Date.now()
     };
   }
