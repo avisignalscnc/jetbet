@@ -1992,7 +1992,7 @@ class AviatorGame {
             const now = Date.now() + (this.serverClockOffset || 0);
             const elapsed = (now - this.roundStartTime) / 1000;
             // Clamp to 1.00 floor (e.g. if clock skew makes elapsed negative)
-            this.counter = Math.max(1.00, Math.pow(1.0024, elapsed * 100));
+            this.counter = Math.max(1.00, Math.pow(1.0012, elapsed * 100));
         }
 
         // Always update the counter display every frame (60 FPS smooth)

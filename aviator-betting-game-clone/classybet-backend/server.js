@@ -350,6 +350,8 @@ const gameStateManager = require('./utils/gameStateManager');
 
 const server = http.createServer(app);
 const io = new Server(server, {
+  pingTimeout: 60000,
+  pingInterval: 25000,
   cors: {
     origin: function (origin, callback) {
       callback(null, true); // Allow all origins for WebSocket

@@ -182,11 +182,11 @@ class GameStateManager {
     // Process all remaining bets as losses
     await this.processRoundEnd();
 
-    // Wait 500ms (was 1000ms), then start next round
+    // Wait 3000ms (3 seconds), then start next round
     setTimeout(async () => {
       await this.prepareNextRound();
       await this.startCountdown();
-    }, 500);
+    }, 3000);
   }
 
   /**
@@ -231,7 +231,7 @@ class GameStateManager {
       countdown: this.countdownSeconds,
       crashMultiplier: this.currentState === 'crashed' ? this.crashMultiplier : null,
       // startTime lets the frontend reproduce multiplier using the exact same formula:
-      // Math.pow(1.0024, elapsed * 100) where elapsed = (Date.now() - startTime) / 1000
+      // Math.pow(1.0012, elapsed * 100) where elapsed = (Date.now() - startTime) / 1000
       startTime: this.startTime,
       activeBets: this.activeBets,
       timestamp: Date.now()
