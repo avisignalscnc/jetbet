@@ -1077,8 +1077,10 @@
                                     Min: <span id="min-deposit">KSh 999.00</span> | Max: <span id="max-deposit">KSh
                                         150,000.00</span>
                                 </small>
-                                <small style="color: #999; font-size: 0.8rem; margin-top: 0.25rem; display: block;" id="deposit-note">
-                                    <i class="fas fa-info-circle"></i> Minimum deposit may vary based on your selected currency and payment method.
+                                <small style="color: #999; font-size: 0.8rem; margin-top: 0.25rem; display: block;"
+                                    id="deposit-note">
+                                    <i class="fas fa-info-circle"></i> Minimum deposit may vary based on your selected
+                                    currency and payment method.
                                 </small>
                             </div>
 
@@ -1140,7 +1142,7 @@
                             style="margin-top: 2rem; padding: 1rem; background: rgba(255, 165, 0, 0.1); border-radius: 8px;">
                             <h5 style="color: #ffa500; margin-bottom: 0.5rem;">⚠️ Withdrawal Notice</h5>
                             <p style="color: #ccc; font-size: 0.9rem;">Withdrawals processing is instant but may take
-                                1-24 hours to complete. You'll receive an SMS confirmation immediately once processed.
+                                1-24 hours to complete. Contact Us via +254 756 205 166 in case of delays.
                             </p>
                         </div>
                     </div>
@@ -1574,7 +1576,7 @@
                     if (depositNoteEl) {
                         depositNoteEl.innerHTML = `<i class="fas fa-info-circle"></i> Minimum deposit for ${userData.currency} is ${limits.min}. Limits may vary based on payment method.`;
                     }
-                    
+
                     console.log(`Updated deposit limits for ${userData.currency}: Min ${limits.min}, Max ${limits.max}`);
                 } else {
                     // Fallback if formatDepositLimits is not available
@@ -1588,7 +1590,7 @@
                 const minDepositEl = document.getElementById('min-deposit');
                 const maxDepositEl = document.getElementById('max-deposit');
                 const depositAmountEl = document.getElementById('deposit-amount');
-                
+
                 if (currencyCodeEl) currencyCodeEl.textContent = 'KES';
                 if (minDepositEl) minDepositEl.textContent = 'KSh 999.00';
                 if (maxDepositEl) maxDepositEl.textContent = 'KSh 150,000.00';
