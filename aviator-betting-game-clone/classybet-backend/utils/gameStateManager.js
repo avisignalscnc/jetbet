@@ -168,25 +168,40 @@ class GameStateManager {
     this.currentState = 'crashed';
     this.currentMultiplier = this.crashMultiplier;
 
-    // ❌ REMOVED: Crash log - frontend handles display
+    // Broadcast crash state immediately
     this.broadcastState();
 
-    // Mark round as complete in database
-    if (this.currentRound) {
-      await RoundSchedule.updateOne(
-        { roundId: this.currentRound.roundId },
-        { status: 'complete' }
-      ).catch(err => console.error('Failed to mark round complete:', err));
-    }
-
-    // Process all remaining bets as losses
-    await this.processRoundEnd();
-
-    // Wait 3000ms (3 seconds), then start next round
+    // Start countdown after 500ms (allows crash animation to show)
     setTimeout(async () => {
-      await this.prepareNextRound();
       await this.startCountdown();
-    }, 3000);
+    }, 500);
+
+    // Process round end in background during countdown
+    this.processRoundEndAsync();
+  }
+
+  /**
+   * Process round end asynchronously (runs during countdown)
+   */
+  async processRoundEndAsync() {
+    try {
+      // Mark round as complete in database
+      if (this.currentRound) {
+        await RoundSchedule.updateOne(
+          { roundId: this.currentRound.roundId },
+          { status: 'complete' }
+        ).catch(err => console.error('Failed to mark round complete:', err));
+      }
+
+      // Process all remaining bets as losses
+      await this.processRoundEnd();
+
+      // Prepare next round (should complete during 5-second countdown)
+      await this.prepareNextRound();
+
+    } catch (error) {
+      console.error('❌ Error processing round end:', error);
+    }
   }
 
   /**
