@@ -2027,13 +2027,9 @@ class AviatorGame {
             this.updateCounterGlow(counterElement, this.counter);
         }
 
-        // Crash guard: if we've passed the crash point, trigger locally
-        // (backend will also broadcast 'crashed' state; this prevents visual lag)
-        if (this.randomStop && this.counter >= this.randomStop && this.gameState === 'flying') {
-            this.isFlying = false;
-            this.handleCrash();
-            return;
-        }
+        // NOTE: No local crash guard here — the backend 'crashed' event is the
+        // sole authoritative crash trigger. A local guard would use a stale
+        // randomStop from the PREVIOUS round and crash the animation immediately.
 
         // Check for auto-cashout conditions
         this.handleAutoCashout();
@@ -2505,7 +2501,9 @@ class AviatorGame {
             }
         });
 
-        const countdownInterval = setInterval(() => {
+        // Store ID so _serverDrivenStart() can cancel this if the server
+        // fires 'flying' before our local timer hits zero (prevents double loop)
+        this._countdownInterval = setInterval(() => {
             countdown--;
 
             // Update loading bar progress
@@ -2516,7 +2514,8 @@ class AviatorGame {
             }
 
             if (countdown <= 0) {
-                clearInterval(countdownInterval);
+                clearInterval(this._countdownInterval);
+                this._countdownInterval = null;
 
                 // Clear bet generation interval if still running
                 if (this.betGenerationInterval) {
@@ -2548,6 +2547,7 @@ class AviatorGame {
                 }, 1000);
             }
         }, 1000);
+
     }
 
     resetGame() {
@@ -3120,17 +3120,21 @@ class AviatorGame {
 
         // ── FLYING ────────────────────────────────────────────────────────────
         if (incomingState === 'flying') {
+            // Sync backend bet count so all clients show the same number
+            if (typeof state.activeBets === 'number') {
+                const betCountEl = document.getElementById('bet-count');
+                const mobileBetCountEl = document.getElementById('mobile-bet-count');
+                if (betCountEl) betCountEl.textContent = state.activeBets;
+                if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
+            }
+
             // Capture the server-authoritative startTime once per round
             if (this.gameState !== 'flying') {
-                // Transition: start the round
                 this.roundStartTime = state.startTime || Date.now();
-                this.forcedCrashMultiplier = state.crashMultiplier || this.forcedCrashMultiplier;
-
-                // Only start local animation loop if not already running
-                if (this.gameState !== 'flying') {
-                    // Cancel any in-progress countdown UI, then start game
-                    this._serverDrivenStart();
-                }
+                // Note: crashMultiplier is null during flying (server hides it)
+                // so we leave forcedCrashMultiplier at whatever it was set to
+                // by the previous 'crashed' event. _serverDrivenStart handles it.
+                this._serverDrivenStart();
             }
 
             // Update cash-out button labels for active bets
@@ -3186,6 +3190,18 @@ class AviatorGame {
      * Skips local countdown and jumps straight into the animation.
      */
     _serverDrivenStart() {
+        // Cancel local countdown interval to prevent it firing resetGame()
+        // and starting a second, conflicting animation loop
+        if (this._countdownInterval) {
+            clearInterval(this._countdownInterval);
+            this._countdownInterval = null;
+        }
+        // Also clear bet-generation interval
+        if (this.betGenerationInterval) {
+            clearInterval(this.betGenerationInterval);
+            this.betGenerationInterval = null;
+        }
+
         // Remove any countdown overlay that the local timer may have created
         const existingOverlay = document.querySelector('.countdown-overlay');
         if (existingOverlay && existingOverlay.parentNode) {

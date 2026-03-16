@@ -15,6 +15,7 @@ class GameStateManager {
     this.countdownSeconds = 5;
     this.io = null; // Socket.io instance
     this.gameLoopInterval = null;
+    this.activeBets = 0; // Live bet count — broadcast to all clients
     // No bet tracking - bets are handled independently via WebSocket
   }
 
@@ -138,6 +139,7 @@ class GameStateManager {
     this.currentState = 'flying';
     this.currentMultiplier = 1.00;
     this.startTime = Date.now();
+    this.activeBets = 0; // Reset bet count for new round
 
     // ❌ REMOVED: Flying log - frontend handles display
     this.broadcastState();
@@ -231,6 +233,7 @@ class GameStateManager {
       // startTime lets the frontend reproduce multiplier using the exact same formula:
       // Math.pow(1.0024, elapsed * 100) where elapsed = (Date.now() - startTime) / 1000
       startTime: this.startTime,
+      activeBets: this.activeBets,
       timestamp: Date.now()
     };
 
@@ -248,8 +251,20 @@ class GameStateManager {
       countdown: this.countdownSeconds,
       crashMultiplier: this.currentState === 'crashed' ? this.crashMultiplier : null,
       startTime: this.startTime,
+      activeBets: this.activeBets,
       timestamp: Date.now()
     };
+  }
+
+  /** Call from server.js when a bet is successfully placed */
+  incrementActiveBets() {
+    this.activeBets++;
+    this.broadcastState();
+  }
+
+  /** Call from server.js when a bet is cashed out or crashes */
+  decrementActiveBets() {
+    this.activeBets = Math.max(0, this.activeBets - 1);
   }
 }
 

@@ -416,6 +416,9 @@ io.on('connection', (socket) => {
 
       console.log(`💰 Bet placed: ${userId} - ${amount} KES | New balance: ${user.balance} | Round: ${gameState.roundId}`);
 
+      // Increment shared bet counter — triggers broadcast to all clients
+      gameStateManager.incrementActiveBets();
+
       socket.emit('bet-placed', {
         success: true,
         roundId: gameState.roundId,
@@ -477,6 +480,9 @@ io.on('connection', (socket) => {
       await bet.save();
 
       console.log(`💸 Cashout: ${userId} - ${winAmount} KES at ${currentMultiplier.toFixed(2)}x | New balance: ${user.balance} | Round: ${bet.gameRound}`);
+
+      // Decrement shared bet counter
+      gameStateManager.decrementActiveBets();
 
       socket.emit('cashout-result', {
         success: true,
