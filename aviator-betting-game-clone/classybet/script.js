@@ -37,6 +37,7 @@ class AviatorGame {
         this.roundNumber = 12345;
         this.lastUpdateTime = 0; // For controlling multiplier update frequency
         this.roundStartTime = null; // Server-authoritative start time for multiplier formula
+        this.serverClockOffset = 0; // Offset between client and server time
 
         // Bet history arrays
         this.betHistory = []; // Personal bet history
@@ -2015,7 +2016,9 @@ class AviatorGame {
         // Uses server-authoritative startTime so all clients stay in lockstep.
         // ─────────────────────────────────────────────────────────────────────
         if (this.roundStartTime) {
-            const elapsed = (Date.now() - this.roundStartTime) / 1000;
+            // Apply server clock offset to ensure calculation matches server time
+            const now = Date.now() + (this.serverClockOffset || 0);
+            const elapsed = (now - this.roundStartTime) / 1000;
             // Clamp to 1.00 floor (e.g. if clock skew makes elapsed negative)
             this.counter = Math.max(1.00, Math.pow(1.0024, elapsed * 100));
         }
@@ -3117,6 +3120,11 @@ class AviatorGame {
         if (!state) return;
 
         const incomingState = state.state; // 'waiting' | 'countdown' | 'flying' | 'crashed'
+        
+        // Sync round numbering if provided by server
+        if (state.roundId) {
+            this.roundNumber = state.roundId;
+        }
 
         // ── FLYING ────────────────────────────────────────────────────────────
         if (incomingState === 'flying') {
@@ -3128,11 +3136,20 @@ class AviatorGame {
                 if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
             }
 
+            if (state.timestamp) {
+                this.serverClockOffset = state.timestamp - Date.now();
+            }
+
             // ALWAYS sync the server-authoritative startTime so draw() can
             // compute the correct multiplier even if the local game loop already
             // transitioned to 'flying' before this WebSocket event arrived.
             if (state.startTime) {
                 this.roundStartTime = state.startTime;
+            }
+
+            // Sync multiplier directly from server state as a baseline correction
+            if (state.multiplier) {
+                this.counter = state.multiplier;
             }
 
             // Only start the animation loop on the first transition to 'flying'.
@@ -3301,7 +3318,8 @@ let game;
 
 // WebSocket Initialization
 async function initializeWebSocket() {
-    const API_BASE_URL = window.location.hostname === 'localhost'
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const API_BASE_URL = isLocal
         ? 'http://localhost:3001'
         : 'https://jetbet-m26i.onrender.com';
 
