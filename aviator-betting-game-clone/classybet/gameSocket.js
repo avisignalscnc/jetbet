@@ -11,12 +11,6 @@ class GameSocketClient {
         this.onStateUpdate = null;
         this.onBetPlaced = null;
         this.onCashoutResult = null;
-        this.reconnectionAttempts = 0;
-        this.maxReconnectionAttempts = 20;
-        this.baseReconnectionDelay = 1000;
-        this.maxReconnectionDelay = 30000;
-        this.isReconnecting = false;
-        this.heartbeatInterval = null;
     }
 
     /**
@@ -51,40 +45,24 @@ class GameSocketClient {
     initializeSocket(serverUrl) {
         this.socket = io(serverUrl, {
             transports: ['websocket', 'polling'],
-            reconnection: false, // We'll handle reconnection manually for better control
-            timeout: 10000,
-            forceNew: true
+            reconnection: true,
+            reconnectionDelay: 1000,
+            reconnectionAttempts: 10
         });
 
         // Connection events
         this.socket.on('connect', () => {
             console.log('🔌 Connected to game server');
             this.connected = true;
-            this.reconnectionAttempts = 0;
-            this.isReconnecting = false;
-            
-            // Start heartbeat to detect connection issues early
-            this.startHeartbeat();
         });
 
-        this.socket.on('disconnect', (reason) => {
-            console.log('🔌 Disconnected from game server:', reason);
+        this.socket.on('disconnect', () => {
+            console.log('🔌 Disconnected from game server');
             this.connected = false;
-            this.stopHeartbeat();
-            
-            // Only attempt reconnection if it wasn't intentional
-            if (reason !== 'io client disconnect' && !this.isReconnecting) {
-                this.attemptReconnect(serverUrl);
-            }
         });
 
         this.socket.on('connect_error', (error) => {
-            console.error('🔌 Connection error:', error.message || error);
-            this.connected = false;
-            
-            if (!this.isReconnecting) {
-                this.attemptReconnect(serverUrl);
-            }
+            console.error('🔌 Connection error:', error);
         });
 
         // Game state updates
@@ -125,65 +103,6 @@ class GameSocketClient {
                 this.onCashoutResult = null; // Clear callback after use
             }
         });
-    }
-
-    /**
-     * Attempt to reconnect with exponential backoff
-     */
-    attemptReconnect(serverUrl) {
-        if (this.reconnectionAttempts >= this.maxReconnectionAttempts) {
-            console.error('🔌 Max reconnection attempts reached. Giving up.');
-            return;
-        }
-
-        this.isReconnecting = true;
-        this.reconnectionAttempts++;
-        
-        const delay = this.getReconnectionDelay();
-        console.log(`🔌 Reconnection attempt ${this.reconnectionAttempts}/${this.maxReconnectionAttempts} in ${Math.round(delay)}ms`);
-
-        setTimeout(() => {
-            if (this.socket) {
-                this.socket.disconnect();
-            }
-            this.initializeSocket(serverUrl);
-        }, delay);
-    }
-
-    /**
-     * Calculate exponential backoff delay
-     */
-    getReconnectionDelay() {
-        const delay = Math.min(
-            this.baseReconnectionDelay * Math.pow(2, this.reconnectionAttempts),
-            this.maxReconnectionDelay
-        );
-        // Add jitter to prevent thundering herd
-        return delay + Math.random() * 1000;
-    }
-
-    /**
-     * Start heartbeat to detect connection issues
-     */
-    startHeartbeat() {
-        this.stopHeartbeat(); // Clear any existing interval
-        
-        this.heartbeatInterval = setInterval(() => {
-            if (this.socket && this.connected) {
-                // Send a ping or check connection status
-                this.socket.emit('ping');
-            }
-        }, 25000); // Send heartbeat every 25 seconds
-    }
-
-    /**
-     * Stop heartbeat
-     */
-    stopHeartbeat() {
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
     }
 
     /**
@@ -230,13 +149,10 @@ class GameSocketClient {
      * Disconnect from server
      */
     disconnect() {
-        this.stopHeartbeat();
         if (this.socket) {
             this.socket.disconnect();
             this.connected = false;
         }
-        this.isReconnecting = false;
-        this.reconnectionAttempts = 0;
     }
 }
 

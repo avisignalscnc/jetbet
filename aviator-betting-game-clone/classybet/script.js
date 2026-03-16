@@ -37,9 +37,6 @@ class AviatorGame {
         this.roundStartTime = null; // Server-authoritative start time for multiplier formula
         this.serverClockOffset = 0; // Offset between client and server time
 
-        // Local countdown management
-        this.localCountdownActive = false;
-
         // Bet history arrays
         this.betHistory = []; // Personal bet history
         this.globalBetHistory = []; // All players' bets
@@ -2275,25 +2272,7 @@ class AviatorGame {
 
         this.messageElement.textContent = 'Round ended - Place your bet for the next round';
         
-        // Start 3-second countdown to next round locally if not already active
-        if (!this.localCountdownActive) {
-            this.localCountdownActive = true;
-            setTimeout(() => {
-                // Clear "FLEW AWAY" text and reset for next round
-                const counterElement = document.getElementById('counter');
-                if (counterElement) {
-                    counterElement.innerHTML = '';
-                    counterElement.className = 'waiting';
-                }
-                
-                // Reset game state for next round
-                this.gameState = 'waiting';
-                this.resetForNewRound();
-                
-                // Start countdown locally if server doesn't respond
-                this.startLocalCountdown();
-            }, 3000); // Exactly 3 seconds
-        }
+        // NO LOCAL SETTIMEOUT HERE - game waits for server 'countdown' state
     }
 
     animateCrash() {
@@ -2319,65 +2298,6 @@ class AviatorGame {
         };
 
         animateCrashFrame();
-    }
-
-    startLocalCountdown() {
-        let countdown = 5;
-        
-        // Create or update countdown overlay
-        let overlay = document.querySelector('.countdown-overlay');
-        if (!overlay) {
-            const gameArea = document.getElementById('counterWrapper');
-            overlay = document.createElement('div');
-            overlay.className = 'countdown-overlay';
-            overlay.style.cssText = `
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                z-index: 1000;
-                text-align: center;
-                pointer-events: none;
-            `;
-            overlay.innerHTML = `
-                <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-                    <img src="ufc.svg" alt="UFC" height="100" style="opacity: 0.9;">
-                </div>
-                <div style="width: 200px; height: 6px; background: rgba(255, 255, 255, 0.3); border-radius: 3px; margin: 0 auto; overflow: hidden; box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);">
-                    <div class="countdown-progress" style="height: 100%; background: linear-gradient(90deg, #ff4444, #ff6666); width: 0%; transition: width 0.3s ease; border-radius: 3px;"></div>
-                </div>
-                <div style="display: flex; justify-content: center; margin-top: 20px;">
-                    <img src="spribe.svg" alt="Spribe" height="55" style="opacity: 0.8;">
-                </div>
-            `;
-            gameArea.appendChild(overlay);
-        }
-
-        const progressBar = overlay.querySelector('.countdown-progress');
-        
-        const updateCountdown = () => {
-            if (countdown > 0) {
-                const progress = ((5 - countdown) / 5) * 100;
-                if (progressBar) {
-                    progressBar.style.width = `${Math.max(0, Math.min(100, progress))}%`;
-                }
-                countdown--;
-                setTimeout(updateCountdown, 1000);
-            } else {
-                // Remove countdown overlay
-                if (overlay && overlay.parentNode) {
-                    overlay.parentNode.removeChild(overlay);
-                }
-                
-                // Reset local countdown flag
-                this.localCountdownActive = false;
-                
-                // Start new round locally
-                this.startGame();
-            }
-        };
-        
-        updateCountdown();
     }
 
     showGameMessage(message, type = 'info') {
@@ -2991,29 +2911,23 @@ class AviatorGame {
 
         // ── COUNTDOWN ─────────────────────────────────────────────────────────
         else if (incomingState === 'countdown') {
-            // Reset local countdown flag since server is handling countdown
-            this.localCountdownActive = false;
+            this.gameState = 'countdown';
             
-            // Only handle server countdown if we're not already in local countdown
-            if (this.gameState !== 'waiting') {
-                this.gameState = 'countdown';
-                
-                // Clear "FLEW AWAY" if it was showing
-                const counterElement = document.getElementById('counter');
-                if (counterElement) {
-                    counterElement.innerHTML = '';
-                    counterElement.className = 'waiting';
-                }
+            // Clear "FLEW AWAY" if it was showing
+            const counterElement = document.getElementById('counter');
+            if (counterElement) {
+                counterElement.innerHTML = '';
+                counterElement.className = 'waiting';
+            }
 
-                this.renderCountdownOverlay(state.countdown);
-                
-                // Sync current bet count during countdown if provided
-                if (typeof state.activeBets === 'number') {
-                    const betCountEl = document.getElementById('bet-count');
-                    const mobileBetCountEl = document.getElementById('mobile-bet-count');
-                    if (betCountEl) betCountEl.textContent = state.activeBets;
-                    if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
-                }
+            this.renderCountdownOverlay(state.countdown);
+            
+            // Sync current bet count during countdown if provided
+            if (typeof state.activeBets === 'number') {
+                const betCountEl = document.getElementById('bet-count');
+                const mobileBetCountEl = document.getElementById('mobile-bet-count');
+                if (betCountEl) betCountEl.textContent = state.activeBets;
+                if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
             }
         }
 
@@ -3178,14 +3092,10 @@ async function initializeWebSocket() {
         ? 'http://localhost:3001'
         : 'https://jetbet-m26i.onrender.com';
 
-    // Create connection status indicator
-    createConnectionStatusIndicator();
-
     try {
         console.log('[WebSocket] Connecting to:', API_BASE_URL);
         await gameSocket.connect(API_BASE_URL);
         console.log('[WebSocket] ✅ Connected to game server');
-        updateConnectionStatus('connected');
 
         // Listen for game state updates
         gameSocket.onStateUpdate = (state) => {
@@ -3194,85 +3104,8 @@ async function initializeWebSocket() {
             }
         };
 
-        // Listen for connection events
-        gameSocket.socket.on('disconnect', () => {
-            updateConnectionStatus('disconnected');
-        });
-
-        gameSocket.socket.on('connect', () => {
-            updateConnectionStatus('connected');
-        });
-
-        gameSocket.socket.on('connect_error', () => {
-            updateConnectionStatus('error');
-        });
-
     } catch (error) {
         console.error('[WebSocket] ❌ Connection failed:', error);
-        updateConnectionStatus('error');
-    }
-}
-
-// Create connection status indicator
-function createConnectionStatusIndicator() {
-    const statusDiv = document.createElement('div');
-    statusDiv.id = 'connection-status';
-    statusDiv.style.cssText = `
-        position: fixed;
-        top: 10px;
-        right: 10px;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-        z-index: 10000;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-    `;
-    document.body.appendChild(statusDiv);
-    updateConnectionStatus('connecting');
-}
-
-// Update connection status indicator
-function updateConnectionStatus(status) {
-    const statusDiv = document.getElementById('connection-status');
-    if (!statusDiv) return;
-
-    const statusConfig = {
-        connecting: {
-            text: '🔄 Connecting...',
-            bg: 'linear-gradient(135deg, #ff9800, #f57c00)',
-            color: 'white'
-        },
-        connected: {
-            text: '🟢 Connected',
-            bg: 'linear-gradient(135deg, #4caf50, #388e3c)',
-            color: 'white'
-        },
-        disconnected: {
-            text: '🔴 Disconnected',
-            bg: 'linear-gradient(135deg, #f44336, #d32f2f)',
-            color: 'white'
-        },
-        error: {
-            text: '⚠️ Connection Error',
-            bg: 'linear-gradient(135deg, #ff5722, #e64a19)',
-            color: 'white'
-        }
-    };
-
-    const config = statusConfig[status] || statusConfig.error;
-    statusDiv.textContent = config.text;
-    statusDiv.style.background = config.bg;
-    statusDiv.style.color = config.color;
-
-    // Auto-hide connected status after 3 seconds
-    if (status === 'connected') {
-        setTimeout(() => {
-            statusDiv.style.opacity = '0.3';
-        }, 3000);
-    } else {
-        statusDiv.style.opacity = '1';
     }
 }
 
