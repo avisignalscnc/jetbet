@@ -1561,8 +1561,11 @@ class AviatorGame {
         // Update the display immediately
         this.updateCounterDisplay();
         
-        // Fetch updated history from backend in background
-        this.fetchBackendHistory();
+        // Fetch updated history from backend in background after a slight delay
+        // This ensures the backend has finished marking the round as complete in the DB
+        setTimeout(() => {
+            this.fetchBackendHistory();
+        }, 2000);
     }
 
     saveRoundHistory() {
