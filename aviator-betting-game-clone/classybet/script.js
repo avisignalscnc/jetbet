@@ -2746,13 +2746,7 @@ class AviatorGame {
                 existingOverlay.parentNode.removeChild(existingOverlay);
             }
 
-            // Sync backend bet count
-            if (typeof state.activeBets === 'number') {
-                const betCountEl = document.getElementById('bet-count');
-                const mobileBetCountEl = document.getElementById('mobile-bet-count');
-                if (betCountEl) betCountEl.textContent = state.activeBets;
-                if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
-            }
+            // Fake bet count is maintained by this.allBetsData.length
 
             // Update multiplier from backend
             if (state.multiplier !== undefined) {
@@ -2801,13 +2795,7 @@ class AviatorGame {
 
             this.renderCountdownOverlay(state.countdown);
             
-            // Sync current bet count during countdown if provided
-            if (typeof state.activeBets === 'number') {
-                const betCountEl = document.getElementById('bet-count');
-                const mobileBetCountEl = document.getElementById('mobile-bet-count');
-                if (betCountEl) betCountEl.textContent = state.activeBets;
-                if (mobileBetCountEl) mobileBetCountEl.textContent = state.activeBets;
-            }
+            // Fake bet count is maintained by this.allBetsData.length
         }
 
         // ── WAITING ───────────────────────────────────────────────────────────
@@ -2866,6 +2854,10 @@ class AviatorGame {
                 button.disabled = false;
             }
         });
+        
+        // Generate fresh mock bets for the new round to keep the "All Bets" list active
+        this.generateMockBets();
+        this.updateAllBetsDisplay();
     }
 
     renderCountdownOverlay(countdown) {
