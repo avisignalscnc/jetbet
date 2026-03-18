@@ -2963,10 +2963,9 @@ async function initializeWebSocket() {
         : 'https://jetbet-m26i.onrender.com';
 
     try {
-        const CLASSYBET_URL = isLocal ? 'http://localhost:3001' : 'https://classybetaviator.com';
-        console.log(`[WebSocket] Connecting to Jetbet (${API_BASE_URL}) and Classybet (${CLASSYBET_URL})`);
-        await gameSocket.connect(API_BASE_URL, CLASSYBET_URL);
-        console.log('[WebSocket] ✅ Connected to both game servers');
+        console.log('[WebSocket] Connecting to:', API_BASE_URL);
+        await gameSocket.connect(API_BASE_URL);
+        console.log('[WebSocket] ✅ Connected to game server');
 
         // Listen for game state updates
         gameSocket.onStateUpdate = (state) => {

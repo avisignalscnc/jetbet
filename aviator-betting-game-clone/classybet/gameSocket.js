@@ -16,7 +16,7 @@ class GameSocketClient {
     /**
      * Connect to backend WebSocket server
      */
-    connect(serverUrl, roundsServerUrl = null) {
+    connect(serverUrl) {
         return new Promise((resolve, reject) => {
             try {
                 // Load socket.io client from CDN if not already loaded
@@ -24,13 +24,13 @@ class GameSocketClient {
                     const script = document.createElement('script');
                     script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
                     script.onload = () => {
-                        this.initializeSocket(serverUrl, roundsServerUrl);
+                        this.initializeSocket(serverUrl);
                         resolve();
                     };
                     script.onerror = reject;
                     document.head.appendChild(script);
                 } else {
-                    this.initializeSocket(serverUrl, roundsServerUrl);
+                    this.initializeSocket(serverUrl);
                     resolve();
                 }
             } catch (error) {
@@ -42,18 +42,8 @@ class GameSocketClient {
     /**
      * Initialize socket connection
      */
-    initializeSocket(serverUrl, roundsServerUrl = null) {
-        // Main socket for bets and cashouts
+    initializeSocket(serverUrl) {
         this.socket = io(serverUrl, {
-            transports: ['websocket', 'polling'],
-            reconnection: true,
-            reconnectionDelay: 1000,
-            reconnectionAttempts: 10
-        });
-
-        // Rounds socket for game state syncing
-        const actualRoundsUrl = roundsServerUrl || serverUrl;
-        this.roundsSocket = actualRoundsUrl === serverUrl ? this.socket : io(actualRoundsUrl, {
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionDelay: 1000,
@@ -62,21 +52,21 @@ class GameSocketClient {
 
         // Connection events
         this.socket.on('connect', () => {
-            console.log('🔌 Connected to main game server');
+            console.log('🔌 Connected to game server');
             this.connected = true;
         });
 
         this.socket.on('disconnect', () => {
-            console.log('🔌 Disconnected from main game server');
+            console.log('🔌 Disconnected from game server');
             this.connected = false;
         });
 
         this.socket.on('connect_error', (error) => {
-            console.error('🔌 Main connection error:', error);
+            console.error('🔌 Connection error:', error);
         });
 
-        // Game state updates (comes from rounds socket!)
-        this.roundsSocket.on('game-state', (state) => {
+        // Game state updates
+        this.socket.on('game-state', (state) => {
             this.currentGameState = state;
             if (this.onStateUpdate) {
                 this.onStateUpdate(state);
@@ -162,9 +152,6 @@ class GameSocketClient {
         if (this.socket) {
             this.socket.disconnect();
             this.connected = false;
-        }
-        if (this.roundsSocket && this.roundsSocket !== this.socket) {
-            this.roundsSocket.disconnect();
         }
     }
 }

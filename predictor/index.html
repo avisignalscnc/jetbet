@@ -9,7 +9,6 @@
     <link rel="shortcut icon" href="favicon.jpg?v=2025-08-31" type="image/x-icon">
     <link rel="apple-touch-icon" href="favicon.jpg?v=2025-08-31">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <!-- Paystack removed -->
     <link rel="stylesheet" href="crypto-modal-fix.css">
     <link rel="manifest" href="manifest.json">
@@ -3924,12 +3923,7 @@
                     <div class="round-timer" id="roundTimer"></div>
                     <div class="game-action-buttons" id="gameActionButtons">
                         <button class="game-start-btn" id="gameStartBtn" onclick="showNextPrediction()"
-                            style="display:none;">Start
-                            Bot</button>
-                        <button class="game-refresh-btn" id="refreshBotBtn" onclick="refreshBotSync()"
-                            style="display:none;">
-                            <i class="fas fa-sync"></i> Refresh Sync
-                        </button>
+                            style="display:none;">Predict Next Round</button>
                         <button class="game-start-btn" id="activateBotBtn"
                             onclick="openModal('activationCodeModal')">Activate Bot</button>
                     </div>
@@ -3943,13 +3937,21 @@
         </div>
     </div>
 
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
     <script>
         const API_BASE_URL = 'https://aviator-backend-komp.onrender.com';
         const BTC_ADDRESS = '135ox27LP9wG27iduyuf3KxkgNrLZWQptn';
         const USDT_ADDRESS = 'TCRwpXHYvcXY3y4FJThLHCc9hHbs9H4ExH';
-        const WS_URL = 'https://aviator-backend-komp.onrender.com';
-        let ROUND_DURATION_MS = 30000;
+        const ROUND_API_BASE = 'https://aviator-casino.onrender.com';
+        const ROUND_WS_URL = 'https://aviator-casino.onrender.com';
+        // REMOVED: ROUND_FAILURE_THRESHOLD - WebSocket only
+        let ROUND_DURATION_MS = 30000; // Default 30s, will be fetched from backend
+        // REMOVED: ROUND_POLL_INTERVAL_MS - WebSocket only
+        const SHORT_COUNTDOWN_MIN_MS = 1000;
+        const SHORT_COUNTDOWN_MAX_MS = 60000;
         let deferredInstallPrompt = null;
+        let gameSocket = null;
+        let currentGameState = null;
 
         // --- Currency Converter Impl ---
         const CURRENCY_CONFIG = [
@@ -4625,17 +4627,30 @@
 
         function createDefaultConfig() {
             return {
-                predictions: [],
-                currentIndex: 0,
-                duration: 60, // minutes
-                startTime: null,
+                usingApi: false,
                 isActive: false,
-                isRoundActive: false,
+                startTime: null,
+                sessionTimeLimit: 600000,
+                // REMOVED: predictions and currentIndex - WebSocket provides rounds
                 roundStartTime: null,
                 sessionState: 'waiting',
-                usingApi: false,
+                isRoundActive: false,
+                roundQueue: [],
+                roundMetadata: [],
+                // REMOVED: manualPredictions - not used
+                serverTimeOffset: 0,
+                lastServerTime: null,
+                nextRoundStartTime: null,
+                roundCountdownInterval: null,
+                // REMOVED: roundFetchInFlight, roundFetchFailures, roundPollInterval - WebSocket only
+                seenRoundIds: new Set(),
+                futureRounds: [],
                 currentRoundMeta: null,
-                sessionTimerInterval: null
+                lastCrashMultiplier: null,
+                liveRoundId: null,
+                sessionTimerInterval: null,
+                activeRoundId: null,
+                upcomingRound: null
             };
         }
 
@@ -4650,208 +4665,273 @@
             }
             return numeric.toFixed(2) + 'x';
         }
-        
-        // --- JETBET DETERMINISTIC LOGIC ---
-        const JETBET_ROUND_INTERVAL = 30000;
-        const JETBET_BASE_ID = 100000;
-        const JETBET_BASE_EPOCH = 1735689600000; // Jan 1, 2025 UTC
-        const JETBET_SALT = 'aviator-round-salt';
 
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-            const hashArray = Array.from(new Uint8Array(hashBuffer));
-            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-
-        function calculateRoundId(startTimeMs) {
-            const diff = startTimeMs - JETBET_BASE_EPOCH;
-            const offset = Math.max(0, Math.floor(diff / JETBET_ROUND_INTERVAL));
-            return JETBET_BASE_ID + offset;
-        }
-
-        function calculateStartTimeFromId(roundId) {
-            const offset = roundId - JETBET_BASE_ID;
-            return JETBET_BASE_EPOCH + offset * JETBET_ROUND_INTERVAL;
-        }
-
-        async function generateJetBetMultiplier(roundId, startTimeMs) {
-            const isoString = new Date(startTimeMs).toISOString();
-            const seed = `${JETBET_SALT}:${roundId}:${isoString}`;
-            const hash = await sha256(seed);
-
-            const intVal = parseInt(hash.substring(0, 8), 16);
-            const random = (intVal % 100000) / 100000;
-
+        function generateRandomMultiplier() {
+            // Weighted random generation to simulate crash game mechanics
+            const r = Math.random();
             let multiplier;
-            if (random < 0.45) {
-                const range = 0.99;
-                multiplier = 1.00 + (random / 0.45) * range;
-            } else if (random < 0.92) {
-                const range = 2.99;
-                const normalized = (random - 0.45) / 0.35;
-                multiplier = 2.00 + normalized * range;
-            } else if (random < 0.98) {
-                const range = 4.99;
-                const normalized = (random - 0.80) / 0.16;
-                multiplier = 5.00 + normalized * range;
+
+            if (r < 0.5) {
+                // 50% chance of low multiplier (1.00x - 2.00x)
+                multiplier = 1.0 + Math.random();
+            } else if (r < 0.8) {
+                // 30% chance of medium (2.00x - 5.00x)
+                multiplier = 2.0 + Math.random() * 3.0;
+            } else if (r < 0.95) {
+                // 15% chance of high (5.00x - 10.00x)
+                multiplier = 5.0 + Math.random() * 5.0;
             } else {
-                const range = 90.00;
-                const normalized = (random - 0.96) / 0.04;
-                multiplier = 10.00 + normalized * range;
-            }
-            return Number(multiplier.toFixed(2));
-        }
-
-        async function computePredictionForRound(roundId) {
-            const startTimeMs = calculateStartTimeFromId(roundId);
-            const multiplier = await generateJetBetMultiplier(roundId, startTimeMs);
-            return { roundId, startTime: startTimeMs, multiplier };
-        }
-
-        // --- WebSocket Predictor State ---
-        let predictorSocket = null;
-        let liveGameState = null;
-        let predictedRound = null;
-        let lastPredictedRoundId = null;
-        let predictionAnimating = false;
-
-        function connectPredictorWS() {
-            if (predictorSocket) {
-                predictorSocket.disconnect();
+                // 5% chance of super high (10.00x - 100.00x)
+                multiplier = 10.0 + Math.random() * 90.0;
             }
 
-            predictorSocket = io(WS_URL, {
-                transports: ['websocket', 'polling'],
-                reconnection: true,
-                reconnectionDelay: 2000,
-                reconnectionAttempts: Infinity
-            });
+            return formatMultiplier(multiplier);
+        }
 
-            predictorSocket.on('connect', () => {
-                console.log('🔌 Predictor connected to backend WebSocket');
+        // REMOVED: fetchRoundSchedule - now using WebSocket only
+
+        function normaliseRoundEntry(round) {
+            if (!round || round.roundId == null || !round.startTime) {
+                return null;
+            }
+
+            const roundId = Number(round.roundId);
+            const startTimeMs = new Date(round.startTime).getTime();
+            if (Number.isNaN(roundId) || Number.isNaN(startTimeMs)) {
+                return null;
+            }
+
+            const multiplierValue = Number(round.multiplier);
+
+            return {
+                roundId,
+                startTime: startTimeMs,
+                multiplier: Number.isNaN(multiplierValue) ? null : multiplierValue
+            };
+        }
+
+        function pickFirstFutureRound(candidates, liveRoundId) {
+            if (!Array.isArray(candidates) || candidates.length === 0) {
+                return null;
+            }
+            const future = candidates.find((round) => liveRoundId == null || round.roundId > liveRoundId);
+            return future || candidates[0];
+        }
+
+        function updateUpcomingPreview(roundMeta) {
+            if (!roundMeta) return;
+            const predictionDisplay = document.getElementById('predictionDisplay');
+            if (predictionDisplay) {
+                predictionDisplay.textContent = formatMultiplier(roundMeta.multiplier) + 'x';
+                predictionDisplay.className = 'prediction-display';
+            }
+
+            if (!devConfig.isRoundActive) {
+                const roundCounter = document.getElementById('roundCounter');
+                if (roundCounter) {
+                    roundCounter.textContent = `Next Round ${roundMeta.roundId}`;
+                }
+
                 const roundStatus = document.getElementById('roundStatus');
-                if (roundStatus) roundStatus.textContent = 'Connected to live rounds';
-            });
-
-            predictorSocket.on('game-state', handleLiveGameState);
-
-            predictorSocket.on('disconnect', () => {
-                console.log('🔌 Predictor disconnected from WebSocket');
-                const roundStatus = document.getElementById('roundStatus');
-                if (roundStatus) roundStatus.textContent = 'Reconnecting...';
-            });
-
-            predictorSocket.on('connect_error', (err) => {
-                console.error('WebSocket connection error:', err.message);
-            });
-        }
-
-        function disconnectPredictorWS() {
-            if (predictorSocket) {
-                predictorSocket.disconnect();
-                predictorSocket = null;
+                if (roundStatus) {
+                    roundStatus.textContent = `Next Round ${roundMeta.roundId} - Ready to predict`;
+                }
             }
-            liveGameState = null;
-            predictedRound = null;
-            lastPredictedRoundId = null;
-            predictionAnimating = false;
         }
 
-        async function handleLiveGameState(state) {
-            if (!devConfig.isActive) return;
+        function setUpcomingRound(roundMeta, source = 'ws') {
+            if (!roundMeta) {
+                devConfig.upcomingRound = null;
+                return;
+            }
 
-            liveGameState = state;
-            const currentRoundId = state.roundId;
-            const gamePhase = state.state;
-            const nextRoundId = currentRoundId + 1;
+            devConfig.upcomingRound = roundMeta;
+            devConfig.upcomingRoundSource = source;
 
-            // Compute prediction for the NEXT round if we haven't yet
-            if (nextRoundId !== lastPredictedRoundId) {
-                lastPredictedRoundId = nextRoundId;
-                predictedRound = await computePredictionForRound(nextRoundId);
+            if (!Array.isArray(devConfig.roundQueue)) {
+                devConfig.roundQueue = [];
+            }
 
-                // Trigger prediction animation for the new round
-                if (!predictionAnimating) {
-                    showLivePrediction(predictedRound, currentRoundId);
+            const existingIndex = devConfig.roundQueue.findIndex((round) => round.roundId === roundMeta.roundId);
+            if (existingIndex === -1) {
+                devConfig.roundQueue.unshift(roundMeta);
+            } else if (existingIndex > 0) {
+                devConfig.roundQueue.splice(existingIndex, 1);
+                devConfig.roundQueue.unshift(roundMeta);
+            } else {
+                devConfig.roundQueue[0] = roundMeta;
+            }
+
+            updateNextRoundStartTime();
+
+            if (!devConfig.isRoundActive && devConfig.isActive) {
+                updateUpcomingPreview(roundMeta);
+            }
+        }
+
+        function getNextRoundFromQueue() {
+            if (!Array.isArray(devConfig.roundQueue) || devConfig.roundQueue.length === 0) {
+                return null;
+            }
+
+            const liveRoundId = typeof devConfig.liveRoundId === 'number' ? devConfig.liveRoundId : null;
+            const targetIndex = devConfig.roundQueue.findIndex((round) => liveRoundId == null || round.roundId > liveRoundId);
+            if (targetIndex === -1) {
+                return devConfig.roundQueue[0];
+            }
+            return devConfig.roundQueue[targetIndex];
+        }
+
+        function consumeNextPredictionRound() {
+            if (!Array.isArray(devConfig.roundQueue) || devConfig.roundQueue.length === 0) {
+                return null;
+            }
+
+            const liveRoundId = typeof devConfig.liveRoundId === 'number' ? devConfig.liveRoundId : null;
+            let targetIndex = devConfig.roundQueue.findIndex((round) => liveRoundId == null || round.roundId > liveRoundId);
+            if (targetIndex === -1) {
+                targetIndex = 0;
+            }
+
+            const [roundMeta] = devConfig.roundQueue.splice(targetIndex, 1);
+            if (!roundMeta) {
+                return null;
+            }
+
+            return roundMeta;
+        }
+
+        // REMOVED: ensureUpcomingRoundAvailable - now using WebSocket only
+
+        function extractUpcomingRoundFromState(state) {
+            if (!state) return null;
+            const candidates = [];
+
+            if (state.nextRound) {
+                const normalized = normaliseRoundEntry(state.nextRound);
+                if (normalized) {
+                    candidates.push(normalized);
                 }
             }
 
-            // Update UI based on live game phase
-            const roundStatus = document.getElementById('roundStatus');
-            const roundCounter = document.getElementById('roundCounter');
-
-            switch (gamePhase) {
-                case 'countdown':
-                    if (roundCounter) roundCounter.textContent = `Live Round ${currentRoundId}`;
-                    if (roundStatus) roundStatus.textContent = `Round ${currentRoundId} starting...`;
-                    if (predictedRound && !predictionAnimating) {
-                        showLivePrediction(predictedRound, currentRoundId);
+            if (Array.isArray(state.futureRounds)) {
+                state.futureRounds.forEach((round) => {
+                    const normalized = normaliseRoundEntry(round);
+                    if (normalized) {
+                        candidates.push(normalized);
                     }
-                    break;
+                });
+            }
 
-                case 'flying':
-                    const liveMult = parseFloat(state.multiplier).toFixed(2);
-                    if (roundCounter) roundCounter.textContent = `Live Round ${currentRoundId}`;
-                    if (roundStatus) roundStatus.textContent = `Round ${currentRoundId} live — ${liveMult}x`;
-                    if (predictedRound && !predictionAnimating) {
-                        displayPredictionStatic(predictedRound);
-                    }
-                    break;
+            const liveRoundId = typeof devConfig.liveRoundId === 'number' ? devConfig.liveRoundId : null;
+            return pickFirstFutureRound(candidates, liveRoundId);
+        }
 
-                case 'crashed':
-                    const crashMult = state.crashMultiplier ? parseFloat(state.crashMultiplier).toFixed(2) : '—';
-                    if (roundCounter) roundCounter.textContent = `Live Round ${currentRoundId}`;
-                    if (roundStatus) roundStatus.textContent = `Round ${currentRoundId} crashed at ${crashMult}x`;
-                    break;
+        // REMOVED: ensurePredictionSlot - not needed for WebSocket mode
+
+        function stopRoundCountdown() {
+            if (devConfig.roundCountdownInterval) {
+                clearInterval(devConfig.roundCountdownInterval);
+                devConfig.roundCountdownInterval = null;
             }
         }
 
-        function showLivePrediction(prediction, liveRoundId) {
-            if (!prediction || predictionAnimating) return;
-            predictionAnimating = true;
-
-            const predictionEl = document.getElementById('predictionDisplay');
-            const gameStartBtn = document.getElementById('gameStartBtn');
-
-            // Phase 1: Show "Analysing" (1.5s)
-            predictionEl.textContent = 'Analysing...';
-            predictionEl.className = 'prediction-display prediction-blurred';
-            if (gameStartBtn) {
-                gameStartBtn.textContent = `Next: Round ${prediction.roundId}`;
-                gameStartBtn.disabled = true;
+        function updateRoundCountdown() {
+            if (!devConfig.usingApi || !devConfig.nextRoundStartTime) {
+                return;
             }
 
-            setTimeout(() => {
-                // Phase 2: Animate multiplier counting up (2.5s)
-                animateMultiplierCounter(formatMultiplier(prediction.multiplier));
-            }, 1500);
+            const roundTimer = document.getElementById('roundTimer');
+            const serverNow = Date.now() + devConfig.serverTimeOffset;
+            const diff = devConfig.nextRoundStartTime - serverNow;
 
-            setTimeout(() => {
-                // Phase 3: Show final prediction
-                displayPredictionStatic(prediction);
-                predictionAnimating = false;
-            }, 4500);
+            if (!roundTimer) {
+                return;
+            }
+
+            if (diff <= 0) {
+                roundTimer.textContent = 'Round starting...';
+                return;
+            }
+
+            const totalSeconds = Math.floor(diff / 1000);
+            const centiseconds = Math.floor((diff % 1000) / 10);
+            roundTimer.textContent = `Next round in ${totalSeconds.toString().padStart(2, '0')}.${centiseconds
+                .toString()
+                .padStart(2, '0')}s`;
         }
 
-        function displayPredictionStatic(prediction) {
-            if (!prediction) return;
-            const predictionEl = document.getElementById('predictionDisplay');
-            const gameStartBtn = document.getElementById('gameStartBtn');
+        function startRoundCountdown() {
+            if (!devConfig.usingApi || !devConfig.nextRoundStartTime) {
+                return;
+            }
 
-            predictionEl.textContent = formatMultiplier(prediction.multiplier);
-            predictionEl.className = 'prediction-display multiplier-final';
-            if (gameStartBtn) {
-                gameStartBtn.textContent = `Next: Round ${prediction.roundId}`;
-                gameStartBtn.disabled = true;
+            stopRoundCountdown();
+            updateRoundCountdown();
+            devConfig.roundCountdownInterval = setInterval(updateRoundCountdown, 500);
+        }
+
+        function updateNextRoundStartTime() {
+            if (!devConfig.usingApi) {
+                return;
+            }
+
+            const nextEntry = getNextRoundFromQueue();
+            if (nextEntry) {
+                const serverNow = Date.now() + devConfig.serverTimeOffset;
+                let diff = nextEntry.startTime - serverNow;
+                if (!Number.isFinite(diff) || diff < 0) {
+                    diff = SHORT_COUNTDOWN_MIN_MS;
+                }
+                // Cap to [1s, 60s] — reflects actual server schedule
+                diff = Math.max(SHORT_COUNTDOWN_MIN_MS, Math.min(SHORT_COUNTDOWN_MAX_MS, diff));
+                devConfig.nextRoundStartTime = serverNow + diff;
+                startRoundCountdown();
+            } else {
+                devConfig.nextRoundStartTime = null;
+                stopRoundCountdown();
+                const roundTimer = document.getElementById('roundTimer');
+                if (roundTimer) {
+                    roundTimer.textContent = 'Waiting for schedule...';
+                }
             }
         }
 
-        // Legacy stubs for code that may still reference these
-        function startRoundPolling() { connectPredictorWS(); }
-        function stopRoundPolling() { disconnectPredictorWS(); }
-        async function refreshRoundQueue(initial) { /* no-op, WS driven */ }
-        function generateNextSimulationRound() { /* no-op, WS driven */ }
+        // REMOVED: startRoundPolling - now using WebSocket only
+
+        function pruneRoundQueue() {
+            if (!Array.isArray(devConfig.roundQueue)) {
+                return;
+            }
+
+            const liveRoundId = typeof devConfig.liveRoundId === 'number' ? devConfig.liveRoundId : null;
+            const serverNow = Date.now() + devConfig.serverTimeOffset;
+
+            // Remove rounds that are already completed or too old
+            devConfig.roundQueue = devConfig.roundQueue.filter(round => {
+                // Keep round if it's in the future
+                if (round.startTime > serverNow) {
+                    return true;
+                }
+                // Keep round if it's newer than live round
+                if (liveRoundId && round.roundId > liveRoundId) {
+                    return true;
+                }
+                // Remove old rounds
+                return false;
+            });
+        }
+
+        // REMOVED: stopRoundPolling - now using WebSocket only
+
+        // Simulation Loop
+        function generateNextSimulationRound() {
+            if (!devConfig.isActive) return;
+
+            // REMOVED: predictions check - WebSocket provides rounds
+            // Initialize if needed
+            showNextPrediction();
+        }
 
         function updateDemoModePanel() {
             const panel = document.getElementById('demoModePanel');
@@ -5493,8 +5573,11 @@
             const gameStartBtn = document.getElementById('gameStartBtn');
             const refreshBotBtn = document.getElementById('refreshBotBtn');
             const activateBotBtn = document.getElementById('activateBotBtn');
-            if (gameStartBtn) gameStartBtn.style.display = 'block';
-            if (refreshBotBtn) refreshBotBtn.style.display = 'block';
+            if (gameStartBtn) {
+                gameStartBtn.style.display = 'inline-block';
+                gameStartBtn.textContent = 'Predict Next Round';
+            }
+            if (refreshBotBtn) refreshBotBtn.style.display = 'inline-block';
             if (activateBotBtn) activateBotBtn.style.display = 'none';
             console.log('✅ Showing active bot UI');
         }
@@ -5637,17 +5720,12 @@
                         }
                     }
 
-                    // Set isActive immediately so Predict button won't re-prompt
+                    // Set isActive and usingApi immediately
                     devConfig.isActive = true;
+                    devConfig.usingApi = true; // Enable WebSocket/API mode
 
-                    // Start the game session (shows game modal, begins API polling)
+                    // Start the game session (shows game modal, connects to WebSocket)
                     startGameSession();
-
-                    // Begin polling live rounds
-                    if (!devConfig.usingApi) {
-                        devConfig.usingApi = true;
-                        startRoundPolling();
-                    }
                 } else {
                     errorMsg.textContent = data.error || 'Invalid activation code!';
                     errorMsg.style.display = 'block';
@@ -5663,7 +5741,7 @@
 
         async function fetchRoundConfig() {
             try {
-                const response = await fetch(`${WS_URL}/api/rounds/config`);
+                const response = await fetch(`${ROUND_API_BASE}/api/rounds/config`);
                 if (response.ok) {
                     const config = await response.json();
                     if (config.roundDurationMs) {
@@ -5676,29 +5754,186 @@
             }
         }
 
+        // WebSocket connection functions
+        function connectToGameWebSocket() {
+            try {
+                // Connect to WebSocket
+                gameSocket = io(ROUND_WS_URL, {
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 10
+                });
+
+                gameSocket.on('connect', () => {
+                    console.log('✅ Connected to game WebSocket');
+                    const roundStatus = document.getElementById('roundStatus');
+                    if (roundStatus) {
+                        roundStatus.textContent = 'Connected to live game';
+                    }
+
+                    // State is automatically sent on connection
+                });
+
+                gameSocket.on('game-state', (state) => {
+                    console.log('📡 WebSocket game-state received:', JSON.stringify(state, null, 2));
+                    console.log('📡 Current round ID:', state.roundId, 'Next round:', state.nextRound);
+                    currentGameState = state;
+
+                    // Always update display
+                    handleGameStateUpdate(state);
+
+                    // On first connect, show current round if no next round
+                    if (!state.nextRound && devConfig.usingApi && !devConfig.isRoundActive) {
+                        const roundCounter = document.getElementById('roundCounter');
+                        if (roundCounter && state.roundId) {
+                            roundCounter.textContent = `Round ${state.roundId}`;
+                        }
+                    }
+
+                    // On first connect, if we have next round, show it immediately
+                    if (state.nextRound && devConfig.usingApi && devConfig.isActive && !devConfig.isRoundActive) {
+                        // Ensure it's the NEXT round, not current
+                        if (state.nextRound.roundId > state.roundId) {
+                            console.log('📡 Found next round in WebSocket:', state.nextRound);
+                            const predictionDisplay = document.getElementById('predictionDisplay');
+                            if (predictionDisplay && predictionDisplay.textContent === 'Loading...') {
+                                predictionDisplay.textContent = formatMultiplier(state.nextRound.multiplier) + 'x';
+                                predictionDisplay.className = 'prediction-display';
+                                document.getElementById('roundStatus').textContent = 'Next round ready';
+
+                                // Store it in the queue
+                                setUpcomingRound(normaliseRoundEntry(state.nextRound), 'ws');
+                            }
+                        }
+                    }
+                });
+
+                gameSocket.on('disconnect', () => {
+                    console.log('❌ Disconnected from game WebSocket');
+                    const roundStatus = document.getElementById('roundStatus');
+                    if (roundStatus) {
+                        roundStatus.textContent = 'Reconnecting...';
+                    }
+                });
+
+                gameSocket.on('connect_error', (error) => {
+                    console.error('WebSocket connection error:', error);
+                    const roundStatus = document.getElementById('roundStatus');
+                    if (roundStatus) {
+                        roundStatus.textContent = 'Connection error...';
+                    }
+                });
+
+            } catch (error) {
+                console.error('Failed to connect to WebSocket:', error);
+                // REMOVED: fallbackToPolling() - WebSocket only
+                const roundStatus = document.getElementById('roundStatus');
+                if (roundStatus) {
+                    roundStatus.textContent = 'Connection failed - Retrying...';
+                }
+            }
+        }
+
+        function handleGameStateUpdate(state) {
+            currentGameState = state;
+            devConfig.liveRoundId = typeof state.roundId === 'number' ? state.roundId : Number(state.roundId);
+
+            console.log('🔄 Processing game state - Round:', state.roundId, 'State:', state.state, 'Next round:', state.nextRound);
+
+            // Always show current round number when not predicting next round
+            if (state.roundId && !devConfig.isRoundActive && !devConfig.upcomingRound) {
+                const roundCounter = document.getElementById('roundCounter');
+                if (roundCounter) {
+                    roundCounter.textContent = `Round ${state.roundId}`;
+                }
+            }
+
+            // Update round status (minimal updates)
+            const roundStatus = document.getElementById('roundStatus');
+            if (roundStatus && !devConfig.isRoundActive && !devConfig.upcomingRound) {
+                switch (state.state) {
+                    case 'waiting':
+                        roundStatus.textContent = 'Waiting for next round...';
+                        break;
+                    case 'countdown':
+                        roundStatus.textContent = 'Round starting soon...';
+                        break;
+                    case 'flying':
+                        roundStatus.textContent = 'Round in progress...';
+                        break;
+                    case 'crashed':
+                        // Don't show crash message to avoid confusion
+                        break;
+                }
+            }
+
+            // Store the crash multiplier for the next round prediction
+            if (state.state === 'crashed' && state.crashMultiplier) {
+                devConfig.lastCrashMultiplier = state.crashMultiplier;
+                console.log('💾 Stored crash multiplier:', state.crashMultiplier, 'for next prediction');
+            }
+
+            // CRITICAL: Always keep the NEXT round ready for prediction (one ahead of live)
+            if (devConfig.usingApi && devConfig.isActive) {
+                const upcomingFromState = extractUpcomingRoundFromState(state);
+                if (upcomingFromState && upcomingFromState.roundId > devConfig.liveRoundId) {
+                    console.log('📡 Setting up upcoming round:', upcomingFromState);
+                    setUpcomingRound(upcomingFromState, 'ws');
+
+                    // Auto-show the prediction if we're not in a round
+                    if (!devConfig.isRoundActive) {
+                        const predictionDisplay = document.getElementById('predictionDisplay');
+                        if (predictionDisplay && upcomingFromState.multiplier) {
+                            predictionDisplay.textContent = formatMultiplier(upcomingFromState.multiplier) + 'x';
+                            predictionDisplay.className = 'prediction-display';
+                            document.getElementById('roundStatus').textContent = 'Next round ready';
+
+                            // Update round counter to show NEXT round
+                            const roundCounter = document.getElementById('roundCounter');
+                            if (roundCounter) {
+                                roundCounter.textContent = `Round ${upcomingFromState.roundId}`;
+                            }
+                        }
+                    }
+                }
+
+                pruneRoundQueue();
+            }
+
+            // Store future rounds for backup
+            if (state.futureRounds && state.futureRounds.length > 0) {
+                devConfig.futureRounds = state.futureRounds.map(round => ({
+                    roundId: round.roundId,
+                    startTime: new Date(round.startTime).getTime(),
+                    multiplier: round.multiplier
+                }));
+            }
+        }
+
+        // REMOVED: fallbackToPolling - WebSocket only now
+
         function startGameSession() {
             console.log('🎮 Starting game session...');
 
-            devConfig = createDefaultConfig();
-            devConfig.usingApi = true;
+            // Set active immediately
             devConfig.isActive = true;
+            devConfig.usingApi = true; // WebSocket mode
 
-            // Reset WebSocket prediction state
-            lastPredictedRoundId = null;
-            predictedRound = null;
-            predictionAnimating = false;
+            // Initialize with clean state
+            devConfig.roundQueue = [];
+            devConfig.roundMetadata = [];
+            devConfig.seenRoundIds = new Set();
+            devConfig.upcomingRound = null;
+            devConfig.currentRoundMeta = null;
+            devConfig.activeRoundId = null;
+            devConfig.liveRoundId = null;
 
-            document.getElementById('roundCounter').textContent = 'Connecting...';
-            document.getElementById('roundStatus').textContent = 'Connecting to live rounds...';
+            // Set initial UI state
             document.getElementById('predictionDisplay').textContent = 'Loading...';
             document.getElementById('predictionDisplay').className = 'prediction-display prediction-blurred';
-            document.getElementById('gameStartBtn').textContent = 'Live Predictions Active';
-            document.getElementById('gameStartBtn').disabled = true;
-            const refreshBtn = document.getElementById('refreshBotBtn');
-            if (refreshBtn) {
-                refreshBtn.disabled = false;
-                refreshBtn.textContent = 'Refresh Sync';
-            }
+            document.getElementById('roundStatus').textContent = 'Connecting to live game...';
+            document.getElementById('roundCounter').textContent = 'Room 1';
 
             const gameModal = document.getElementById('gameModal');
             if (gameModal) {
@@ -5722,12 +5957,21 @@
             showActiveBotUI();
 
             devConfig.startTime = new Date();
+            devConfig.predictions = []; // Empty array - not used in WebSocket mode
+            devConfig.roundQueue = [];
+            devConfig.roundMetadata = [];
+            devConfig.manualPredictions = []; // Empty array - not used
 
-            updateSessionCountdown();
-            ensureSessionTimer();
+            // Fetch real round duration from backend then connect to WebSocket
+            fetchRoundConfig().finally(() => {
+                updateSessionCountdown();
+                ensureSessionTimer();
+                connectToGameWebSocket();
+                // DISABLED: Initial REST API call that was causing old round interference
+                // refreshRoundQueue(true);
+            });
 
-            // Connect to live backend WebSocket for real-time round tracking
-            connectPredictorWS();
+            // Note: Free trial overlay removed - now handled by site selection modal
 
             const rejoinBtn = document.getElementById('rejoinSessionBtn');
             if (rejoinBtn) {
@@ -5736,75 +5980,180 @@
                 rejoinBtn.innerHTML = '<i class="fas fa-redo"></i>Rejoin Active Session';
             }
 
-            console.log('🎮 Game session started with live WebSocket');
+            console.log('🎮 Game session started successfully');
         }
 
-        async function refreshBotSync() {
-            const refreshBtn = document.getElementById('refreshBotBtn');
-            if (refreshBtn) {
-                refreshBtn.disabled = true;
-                refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refreshing...';
-            }
-
-            // Reset prediction state
-            lastPredictedRoundId = null;
-            predictedRound = null;
-            predictionAnimating = false;
-
-            const roundStatus = document.getElementById('roundStatus');
-            const predictionDisplay = document.getElementById('predictionDisplay');
-
-            if (roundStatus) {
-                roundStatus.textContent = 'Reconnecting to live rounds...';
-            }
-            if (predictionDisplay) {
-                predictionDisplay.textContent = 'Loading...';
-                predictionDisplay.className = 'prediction-display prediction-blurred';
-            }
-
-            // Reconnect WebSocket
-            disconnectPredictorWS();
-            connectPredictorWS();
-
-            if (refreshBtn) {
-                setTimeout(() => {
-                    refreshBtn.disabled = false;
-                    refreshBtn.innerHTML = '<i class="fas fa-sync"></i> Refresh Sync';
-                }, 2000);
-            }
-        }
 
         function showNextPrediction() {
-            if (!devConfig.isActive) {
-                // Populate the site name before opening the modal
-                const siteNameEl = document.getElementById('actModalSiteName');
-                if (siteNameEl && selectedSite) {
-                    siteNameEl.textContent = selectedSite;
+            console.log('showNextPrediction called, isActive:', devConfig.isActive, 'isRoundActive:', devConfig.isRoundActive);
+
+            // Add visual feedback
+            const btn = document.getElementById('gameStartBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Checking...';
+                // Reset after 1 second if no round starts
+                setTimeout(() => {
+                    if (btn.textContent === 'Checking...') {
+                        btn.disabled = false;
+                        btn.textContent = 'Predict Next Round';
+                    }
+                }, 1000);
+            }
+
+            if (devConfig.isRoundActive) {
+                console.log('Round already active, ignoring click');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Predict Next Round';
                 }
-                // Prompt for activation code before allowing prediction
-                openModal('activationCodeModal');
                 return;
             }
-            // Predictions are now driven by live WebSocket — no manual trigger needed
+
+            // WebSocket-only mode - check if we have next round from WebSocket
+            const readyRound = getNextRoundFromQueue();
+
+            // Also check if we have a next round from current game state
+            const hasNextRound = currentGameState && currentGameState.nextRound &&
+                currentGameState.nextRound.roundId > currentGameState.roundId;
+
+            console.log('Ready round:', readyRound, 'Has next round:', hasNextRound);
+
+            if (readyRound || hasNextRound) {
+                startNewRound();
+                return;
+            }
+
+            // No next round available - wait for WebSocket data
+            const roundStatus = document.getElementById('roundStatus');
+            if (roundStatus) {
+                roundStatus.textContent = 'Waiting for next round data...';
+            }
+
+            // Reset button
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Predict Next Round';
+            }
         }
 
-        // Legacy stub — rounds auto-cycle via WebSocket
-        function startNewRound() { }
+        function startNewRound() {
+            console.log('startNewRound called, isRoundActive:', devConfig.isRoundActive);
+
+            if (devConfig.isRoundActive) return; // Prevent double-clicking
+
+            devConfig.isRoundActive = true;
+            devConfig.sessionState = 'predicting';
+            devConfig.roundStartTime = Date.now();
+
+            let targetPrediction = null; // WebSocket will provide this
+            let roundMeta = null;
+
+            // REMOVED: Manual mode - WebSocket only
+
+            // First try to get from queue
+            let nextRound = consumeNextPredictionRound();
+
+            // If not in queue, try to get from current game state
+            if (!nextRound && currentGameState && currentGameState.nextRound) {
+                // Ensure it's actually the NEXT round
+                if (currentGameState.nextRound.roundId > currentGameState.roundId) {
+                    nextRound = normaliseRoundEntry(currentGameState.nextRound);
+                }
+            }
+
+            console.log('Next round for prediction:', nextRound);
+
+            if (nextRound) {
+                roundMeta = nextRound;
+                devConfig.currentRoundMeta = roundMeta;
+                if (roundMeta.multiplier != null && roundMeta.multiplier !== undefined) {
+                    targetPrediction = formatMultiplier(roundMeta.multiplier);
+                } else {
+                    // REMOVED: Random fallback - wait for WebSocket data instead
+                    console.error('WebSocket round missing multiplier for round:', roundMeta.roundId);
+                    devConfig.isRoundActive = false;
+                    devConfig.sessionState = 'waiting';
+                    document.getElementById('gameStartBtn').disabled = false;
+                    document.getElementById('gameStartBtn').textContent = 'Predict Next Round';
+                    document.getElementById('roundStatus').textContent = 'Waiting for round data...';
+                    return;
+                }
+                document.getElementById('roundCounter').textContent = `Predicting Round ${roundMeta.roundId}`;
+                devConfig.seenRoundIds.add(roundMeta.roundId);
+            } else {
+                console.warn('No NEXT round ready for prediction. Current live round:', devConfig.liveRoundId);
+                devConfig.isRoundActive = false;
+                devConfig.sessionState = 'waiting';
+                document.getElementById('gameStartBtn').disabled = false;
+                document.getElementById('gameStartBtn').textContent = 'Predict Next Round';
+                document.getElementById('roundStatus').textContent = 'Waiting for next round...';
+                return;
+            }
+
+            // REMOVED: ensureUpcomingRoundAvailable(true) - WebSocket only
+
+            // Update UI for round start
+            document.getElementById('gameStartBtn').disabled = true;
+            document.getElementById('gameStartBtn').textContent = 'Round In Progress...';
+
+            // Phase 1: Collecting prediction (2 seconds)
+            document.getElementById('roundStatus').textContent = 'Preparing prediction...';
+            startRoundTimer();
+
+            setTimeout(() => {
+                // Phase 2: Start multiplier animation (3 seconds)
+                devConfig.sessionState = 'active';
+                document.getElementById('roundStatus').textContent = 'Active Round - Multiplier Running';
+                animateMultiplierCounter(targetPrediction);
+            }, 2000);
+
+            setTimeout(() => {
+                // Phase 3: Plane flies (1.5 seconds)
+                devConfig.sessionState = 'flying';
+                document.getElementById('roundStatus').textContent = 'Plane Flies...';
+                finalizeMultiplier(targetPrediction);
+                // REMOVED: storing prediction in array - WebSocket provides rounds
+            }, 5000);
+
+            setTimeout(() => {
+                // Phase 4: Round completed (2 seconds)
+                devConfig.sessionState = 'completed';
+                document.getElementById('roundStatus').textContent = 'Round Completed';
+                showFinalPrediction(targetPrediction);
+            }, 6500);
+
+            setTimeout(() => {
+                // Phase 5: Ready for next round
+                completeRound();
+            }, 8500);
+        }
 
         function animateMultiplierCounter(targetMultiplier) {
             const predictionEl = document.getElementById('predictionDisplay');
+            if (!predictionEl) {
+                console.error('Prediction display element not found!');
+                return;
+            }
+
             predictionEl.className = 'prediction-display multiplier-animating';
 
+            // Ensure targetMultiplier is valid
             if (targetMultiplier === undefined || targetMultiplier === null) {
+                console.warn('Invalid targetMultiplier for animation:', targetMultiplier, '- Using fallback 1.00x');
                 targetMultiplier = '1.00x';
             }
+            // Convert number to string if needed
             if (typeof targetMultiplier === 'number') {
                 targetMultiplier = targetMultiplier.toFixed(2) + 'x';
             }
 
+            console.log('Starting animation for target:', targetMultiplier);
+
+            // Extract the numeric value from the target (e.g., "2.45x" -> 2.45)
             const targetValue = parseFloat(targetMultiplier.replace('x', ''));
             const startValue = 1.00;
-            const duration = 2500;
+            const duration = 2500; // 2.5 seconds of animation
             const steps = 50;
             const increment = (targetValue - startValue) / steps;
 
@@ -5814,17 +6163,24 @@
             const animationInterval = setInterval(() => {
                 if (step >= steps) {
                     clearInterval(animationInterval);
+                    // Ensure final value is set correctly
+                    predictionEl.textContent = targetMultiplier;
+                    console.log('Animation completed, final value:', targetMultiplier);
                     return;
                 }
 
-                currentValue += increment + (Math.random() * 0.02 - 0.01);
+                currentValue += increment + (Math.random() * 0.02 - 0.01); // Add slight randomness
 
+                // Ensure we don't exceed target
                 if (currentValue >= targetValue) {
                     currentValue = targetValue;
                     clearInterval(animationInterval);
+                    predictionEl.textContent = targetMultiplier;
+                    console.log('Animation reached target, final value:', targetMultiplier);
+                } else {
+                    predictionEl.textContent = currentValue.toFixed(2) + 'x';
                 }
 
-                predictionEl.textContent = currentValue.toFixed(2) + 'x';
                 step++;
             }, duration / steps);
         }
@@ -5840,18 +6196,74 @@
             predictionEl.textContent = prediction;
             predictionEl.className = 'prediction-display multiplier-final';
 
+            // Show completion effect
             setTimeout(() => {
                 predictionEl.className = 'prediction-display';
             }, 1000);
         }
 
-        function startRoundTimer() { }
-        function stopRoundTimer() { }
+        function startRoundTimer() {
+            // This function is called when a round starts
+            // It can be used to update UI or track round progress
+            console.log('Round timer started');
+        }
 
-        // completeRound is now a no-op — WS handles auto-cycling
+        function stopRoundTimer() {
+            // This function is called when a round ends
+            console.log('Round timer stopped');
+        }
+
         function completeRound() {
             devConfig.isRoundActive = false;
             devConfig.sessionState = 'waiting';
+
+            // REMOVED: currentIndex incrementing - WebSocket mode is continuous
+
+            stopRoundTimer();
+
+            // Always show the button for next prediction - no session completion
+            document.getElementById('gameStartBtn').textContent = 'Predict Next Round';
+            document.getElementById('gameStartBtn').disabled = false;
+
+            // Check for next round from multiple sources
+            let nextRound = null;
+
+            // First check queue
+            const queuedRound = getNextRoundFromQueue();
+            if (queuedRound) {
+                nextRound = queuedRound;
+            }
+            // Then check current game state
+            else if (currentGameState && currentGameState.nextRound &&
+                currentGameState.nextRound.roundId > currentGameState.roundId) {
+                nextRound = currentGameState.nextRound;
+            }
+
+            if (nextRound) {
+                document.getElementById('predictionDisplay').textContent = formatMultiplier(nextRound.multiplier) + 'x';
+                document.getElementById('predictionDisplay').className = 'prediction-display';
+                document.getElementById('roundStatus').textContent = 'Next round ready';
+
+                // Update round counter to show NEXT round
+                const roundCounter = document.getElementById('roundCounter');
+                if (roundCounter) {
+                    roundCounter.textContent = `Round ${nextRound.roundId}`;
+                }
+            } else {
+                document.getElementById('predictionDisplay').textContent = '?.??x';
+                document.getElementById('predictionDisplay').className = 'prediction-display prediction-blurred';
+                document.getElementById('roundStatus').textContent = 'Waiting for next round...';
+
+                // Show current live round when no next round available
+                const roundCounter = document.getElementById('roundCounter');
+                if (roundCounter && currentGameState && currentGameState.roundId) {
+                    roundCounter.textContent = `Round ${currentGameState.roundId}`;
+                } else if (roundCounter) {
+                    roundCounter.textContent = 'Room 1';
+                }
+            }
+
+            return;
         }
 
         function stopSession() {
@@ -5862,7 +6274,10 @@
             }
 
             // Disconnect WebSocket
-            disconnectPredictorWS();
+            if (gameSocket) {
+                gameSocket.disconnect();
+                gameSocket = null;
+            }
 
             // Update UI
             devConfig.isActive = false;
@@ -5885,9 +6300,7 @@
                 clearInterval(devConfig.sessionTimerInterval);
                 devConfig.sessionTimerInterval = null;
             }
-
-            // Disconnect WebSocket
-            disconnectPredictorWS();
+            // REMOVED: roundPollInterval - WebSocket only
 
             // Hide game modal and return to dev setup
             document.getElementById('gameModal').style.display = 'none';
