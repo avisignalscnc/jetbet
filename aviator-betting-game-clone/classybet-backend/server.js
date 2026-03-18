@@ -505,7 +505,7 @@ io.on('connection', (socket) => {
 
 // Start server only if not in Vercel serverless environment
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-  server.listen(PORT, () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 JetBet Backend Server is running!`);
     console.log(`📍 Server: http://localhost:${PORT}`);
     console.log(`🏥 Health: http://localhost:${PORT}/health`);
