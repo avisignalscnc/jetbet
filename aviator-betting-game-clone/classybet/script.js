@@ -648,15 +648,15 @@ class AviatorGame {
         this.allBetsHistory = []; // Store all bets for the "show more" feature
         this.betCount = 0;
 
-        // Background timer: trickle in bets continuously during waiting phase
+        // Background timer: trickle in bets continuously during waiting and countdown phases
         setInterval(() => {
-            if (this.gameState === 'waiting') {
-                const bursts = Math.floor(Math.random() * 5) + 3; // 3-7 bets per tick during waiting
+            if (this.gameState === 'waiting' || this.gameState === 'countdown') {
+                const bursts = Math.floor(Math.random() * 8) + 5; // 5-12 bets per tick
                 for (let i = 0; i < bursts; i++) {
                     this.generateRandomBet();
                 }
             }
-        }, 800); // More frequent updates during waiting
+        }, 150); // Much more frequent updates for life-like activity
 
         // Setup show more rounds functionality
         this.setupShowMoreRounds();
@@ -737,15 +737,24 @@ class AviatorGame {
         const randomAmount = Math.random() * (selectedRange.max - selectedRange.min) + selectedRange.min;
         const betAmount = Math.round(randomAmount / 100) * 100; // Round to nearest 100
 
-        // Randomly decide if this bet will cash out or crash
-        const willCashOut = Math.random() > 0.3; // 70% chance to cash out
+        // Decide if and when this fake player will cash out
+        const willCashOut = Math.random() < 0.35; // ~35% cash out
+        let targetMultiplier = null;
+        if (willCashOut) {
+            // Weighted random multipliers - more common at lower values
+            const r = Math.random();
+            if (r < 0.6) targetMultiplier = parseFloat((Math.random() * 0.5 + 1.1).toFixed(2)); // 1.1x to 1.6x
+            else if (r < 0.85) targetMultiplier = parseFloat((Math.random() * 1.5 + 1.6).toFixed(2)); // 1.6x to 3.1x
+            else targetMultiplier = parseFloat((Math.random() * 7 + 3.1).toFixed(2)); // 3.1x to 10x
+        }
 
         const bet = {
             player: playerName,
             avatar: avatar,
             amount: parseFloat(betAmount),
+            willCashOut: willCashOut,
+            targetMultiplier: targetMultiplier,
             cashedOut: false,
-            crashed: false,
             multiplier: null,
             win: null,
             status: ''
@@ -753,15 +762,28 @@ class AviatorGame {
 
         this.allBetsData.unshift(bet);
         this.allBetsHistory.unshift(bet);
-        this.betCount++;
-
-        // Keep a larger visible window for more realistic display
-        // No longer limiting allBetsData array size - allow it to grow as needed
 
         // Update display immediately during waiting to show growing bet list
-        if (this.gameState === 'waiting') {
+        if (this.gameState === 'waiting' || this.gameState === 'countdown') {
             this.updateAllBetsDisplay();
-            this.updateBetCount();
+        }
+    }
+
+    updateMockCashouts(currentMultiplier) {
+        if (this.gameState !== 'flying') return;
+
+        let changed = false;
+        this.allBetsData.forEach(bet => {
+            if (bet.willCashOut && !bet.cashedOut && bet.targetMultiplier <= currentMultiplier) {
+                bet.cashedOut = true;
+                bet.multiplier = bet.targetMultiplier;
+                bet.win = parseFloat((bet.amount * bet.multiplier).toFixed(2));
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            this.updateAllBetsDisplay();
         }
     }
 
@@ -2364,7 +2386,7 @@ class AviatorGame {
     }
 
     generateMockBets() {
-        this.allBetsData = [];
+        // Now only used for previous rounds and top charts to allow live trickle-in for active round
         this.previousBetsData = [];
         this.topResultsData = [];
 
@@ -2396,24 +2418,7 @@ class AviatorGame {
             return Math.round(randomAmount / 100) * 100; // Round to nearest 100
         };
 
-        // Ensure 600+ bets per round
-        const betCount = 600 + Math.floor(Math.random() * 250);
-        for (let i = 0; i < betCount; i++) {
-            const playerName = this.generateRandomPlayerName();
-            const amount = getHighBetAmount();
-            const didCashOut = Math.random() < 0.35; // ~35% cash out
-            const multiplier = didCashOut ? parseFloat((Math.random() * 5 + 1).toFixed(2)) : null;
-            const win = multiplier ? parseFloat((amount * multiplier).toFixed(2)) : null;
-            this.allBetsData.push({
-                id: i + 1,
-                player: playerName,
-                avatar: this.pickRandomAvatar(),
-                amount,
-                multiplier,
-                win,
-                cashedOut: !!multiplier
-            });
-        }
+        // allBetsData is now handled by live trickle-in during waiting/countdown phase
 
         // Previous round simulated results: same schema as all-bets
         const prevCount = 600 + Math.floor(Math.random() * 250);
@@ -2748,9 +2753,10 @@ class AviatorGame {
 
             // Fake bet count is maintained by this.allBetsData.length
 
-            // Update multiplier from backend
+            // Update multiplier and handle mock cashouts
             if (state.multiplier !== undefined) {
                 this.counter = state.multiplier;
+                this.updateMockCashouts(this.counter);
             }
 
             // Start animation loop if not flying
@@ -2855,8 +2861,14 @@ class AviatorGame {
             }
         });
         
-        // Generate fresh mock bets for the new round to keep the "All Bets" list active
+        // Generate fresh mock data for history and top charts
         this.generateMockBets();
+        this.loadPreviousBets();
+        this.loadTopResults();
+        
+        // Clear active round bets to allow live trickle-in to start fresh
+        this.allBetsData = [];
+        this.allBetsHistory = [];
         this.updateAllBetsDisplay();
     }
 
