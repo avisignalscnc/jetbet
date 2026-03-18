@@ -534,6 +534,17 @@ class GameStateManager {
     return Math.floor(Math.random() * (selected.max - selected.min) + selected.min);
   }
 
+  /** Call from server.js when a bet is successfully placed */
+  incrementActiveBets() {
+    this.activeBets++;
+    this.broadcastState();
+  }
+
+  /** Call from server.js when a bet is cashed out or crashes */
+  decrementActiveBets() {
+    this.activeBets = Math.max(0, this.activeBets - 1);
+  }
+
   /** Cleanup method to stop all intervals */
   cleanup() {
     if (this.gameLoopInterval) {
