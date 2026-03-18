@@ -9,8 +9,6 @@ class GameSocketClient {
         this.connected = false;
         this.currentGameState = null;
         this.onStateUpdate = null;
-        this.onBetPlaced = null;
-        this.onCashoutResult = null;
         this.onFakeBetPlaced = null;
         this.onFakeBetCashedOut = null;
     }
@@ -75,37 +73,6 @@ class GameSocketClient {
             }
         });
 
-        // Bet placement response
-        this.socket.on('bet-placed', (result) => {
-            if (this.onBetPlaced) {
-                this.onBetPlaced(result);
-            }
-        });
-
-        this.socket.on('bet-error', (error) => {
-            console.error('❌ Bet error:', error);
-            if (this.onBetPlaced) {
-                this.onBetPlaced({ success: false, error: error.error });
-            }
-        });
-
-        // Cashout response
-        this.socket.on('cashout-result', (result) => {
-            console.log('💸 Cashout result received:', result);
-            if (this.onCashoutResult) {
-                this.onCashoutResult(result);
-                this.onCashoutResult = null; // Clear callback after use
-            }
-        });
-
-        this.socket.on('cashout-error', (error) => {
-            console.error('❌ Cashout error:', error);
-            if (this.onCashoutResult) {
-                this.onCashoutResult({ success: false, error: error.error });
-                this.onCashoutResult = null; // Clear callback after use
-            }
-        });
-
         // Fake bet events from server
         this.socket.on('fake-bet-placed', (bet) => {
             if (this.onFakeBetPlaced) {
@@ -128,13 +95,40 @@ class GameSocketClient {
             return Promise.reject(new Error('Not connected to game server'));
         }
 
-        return new Promise((resolve) => {
-            this.onBetPlaced = resolve;
+        return new Promise((resolve, reject) => {
+            // Set timeout to prevent hanging promises
+            const timeout = setTimeout(() => {
+                reject(new Error('Bet placement timeout'));
+            }, 5000);
+
+            // Create a one-time listener for this specific bet
+            const handleBetPlaced = (result) => {
+                clearTimeout(timeout);
+                this.socket.off('bet-placed', handleBetPlaced);
+                this.socket.off('bet-error', handleBetError);
+                console.log('[SOCKET] bet-placed received:', result);
+                resolve(result);
+            };
+
+            const handleBetError = (error) => {
+                clearTimeout(timeout);
+                this.socket.off('bet-placed', handleBetPlaced);
+                this.socket.off('bet-error', handleBetError);
+                console.error('[SOCKET] bet-error received:', error);
+                resolve({ success: false, error: error.error });
+            };
+
+            // Listen for response
+            this.socket.once('bet-placed', handleBetPlaced);
+            this.socket.once('bet-error', handleBetError);
+
+            // Emit bet placement
+            console.log('[SOCKET] Emitting place-bet:', { userId, amount, autoCashout });
             this.socket.emit('place-bet', {
                 userId,
                 amount,
                 autoCashout,
-                token  // Add token for authentication
+                token
             });
         });
     }
@@ -147,8 +141,28 @@ class GameSocketClient {
             return Promise.reject(new Error('Not connected to game server'));
         }
 
-        return new Promise((resolve) => {
-            this.onCashoutResult = resolve;
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Cashout timeout')), 5000);
+            
+            const handleCashoutResult = (result) => {
+                clearTimeout(timeout);
+                this.socket.off('cashout-result', handleCashoutResult);
+                this.socket.off('cashout-error', handleCashoutError);
+                resolve(result);
+            };
+            
+            const handleCashoutError = (error) => {
+                clearTimeout(timeout);
+                this.socket.off('cashout-result', handleCashoutResult);
+                this.socket.off('cashout-error', handleCashoutError);
+                resolve({ success: false, error: error.error || 'Cashout failed' });
+            };
+            
+            this.socket.once('cashout-result', handleCashoutResult);
+            this.socket.once('cashout-error', handleCashoutError);
+            
+            // Emit cashout
+            console.log('[SOCKET] Emitting cashout:', { userId, betId, multiplier });
             this.socket.emit('cashout', { userId, betId, multiplier });
         });
     }
