@@ -216,7 +216,7 @@ class GameStateManager {
     this.currentState = 'countdown';
     this.countdownSeconds = 2.5;
 
-    // ❌ REMOVED: Countdown log - frontend handles display
+    // Broadcast initial state
     this.broadcastState();
 
     const countdownInterval = setInterval(() => {
@@ -230,12 +230,15 @@ class GameStateManager {
     }, 1000);
 
     // Faster interval for mock placements during waiting/countdown (200ms)
+    // Broadcast state after each placement to keep clients in sync
     const placementInterval = setInterval(() => {
       if (this.currentState !== 'waiting' && this.currentState !== 'countdown') {
         clearInterval(placementInterval);
         return;
       }
       this.tickMockPlacements();
+      // Broadcast immediately after placing bets so clients see them in real-time
+      this.broadcastState();
     }, 200);
   }
 

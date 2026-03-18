@@ -2709,7 +2709,18 @@ class AviatorGame {
                 existingOverlay.parentNode.removeChild(existingOverlay);
             }
 
-            // Fake bet count is maintained by this.allBetsData.length
+            // Maintain live fake bet count from backend during flying
+            if (state.activeMockBets && Array.isArray(state.activeMockBets)) {
+                this.allBetsData = state.activeMockBets.map(b => ({
+                    player: b.player,
+                    amount: b.amount,
+                    cashedOut: b.cashedOut || false,
+                    cashoutMultiplier: b.multiplier || null,
+                    winAmount: b.win || null,
+                    id: b.id
+                }));
+                this.updateAllBetsDisplay();
+            }
 
             // Update multiplier from backend
             if (state.multiplier !== undefined) {
@@ -2760,16 +2771,19 @@ class AviatorGame {
 
             this.renderCountdownOverlay(state.countdown);
             
-            // Sync active bets if joining mid-countdown
-            if (state.activeMockBets && this.allBetsData.length < state.activeMockBets.length) {
+            // Always sync active bets from backend during countdown
+            // Backend broadcasts state every 1 second, so bets update continuously
+            // This is the authoritative source for all active fake bets
+            if (state.activeMockBets && Array.isArray(state.activeMockBets)) {
                 this.allBetsData = state.activeMockBets.map(b => ({
                     player: b.player,
                     amount: b.amount,
-                    cashedOut: b.cashedOut,
-                    cashoutMultiplier: b.multiplier,
-                    winAmount: b.win,
+                    cashedOut: b.cashedOut || false,
+                    cashoutMultiplier: b.multiplier || null,
+                    winAmount: b.win || null,
                     id: b.id
                 }));
+                console.log(`[SYNC] Updated allBetsData from server: ${this.allBetsData.length} bets`);
                 this.updateAllBetsDisplay();
             }
         }
