@@ -98,6 +98,8 @@ class GameSocketClient {
             }
         });
 
+        this.socket.on('cashout-error', (error) => {
+            console.error('❌ Cashout error:', error);
             if (this.onCashoutResult) {
                 this.onCashoutResult({ success: false, error: error.error });
                 this.onCashoutResult = null; // Clear callback after use
