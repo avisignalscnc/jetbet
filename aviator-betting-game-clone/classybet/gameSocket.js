@@ -11,6 +11,8 @@ class GameSocketClient {
         this.onStateUpdate = null;
         this.onBetPlaced = null;
         this.onCashoutResult = null;
+        this.onFakeBetPlaced = null;
+        this.onFakeBetCashedOut = null;
     }
 
     /**
@@ -96,11 +98,22 @@ class GameSocketClient {
             }
         });
 
-        this.socket.on('cashout-error', (error) => {
-            console.error('❌ Cashout error:', error);
             if (this.onCashoutResult) {
                 this.onCashoutResult({ success: false, error: error.error });
                 this.onCashoutResult = null; // Clear callback after use
+            }
+        });
+
+        // Fake bet events from server
+        this.socket.on('fake-bet-placed', (bet) => {
+            if (this.onFakeBetPlaced) {
+                this.onFakeBetPlaced(bet);
+            }
+        });
+
+        this.socket.on('fake-bet-cashed-out', (data) => {
+            if (this.onFakeBetCashedOut) {
+                this.onFakeBetCashedOut(data);
             }
         });
     }

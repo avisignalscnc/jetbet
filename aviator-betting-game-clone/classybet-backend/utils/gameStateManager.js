@@ -17,7 +17,11 @@ class GameStateManager {
     this.io = null; // Socket.io instance
     this.gameLoopInterval = null;
     this.activeBets = 0; // Live bet count — broadcast to all clients
-    // No bet tracking - bets are handled independently via WebSocket
+    
+    // Mock bet management
+    this.mockBetPool = [];
+    this.activeMockBets = [];
+    this.lastMockPlacementTime = 0;
   }
 
   /**
@@ -133,6 +137,9 @@ class GameStateManager {
 
       console.log(`📋 Round prepared: ${this.currentRound.roundId} (${this.crashMultiplier}x)`);
       console.log(`📋 Next round: ${this.nextRound?.roundId || 'Not available'}`);
+
+      // Generate mock bets for this round
+      this.generateMockBetsForRound(this.crashMultiplier);
     } catch (error) {
       console.error('❌ Error preparing round:', error);
       // Retry after 2 seconds on error
@@ -221,6 +228,15 @@ class GameStateManager {
         this.startFlying();
       }
     }, 1000);
+
+    // Faster interval for mock placements during waiting/countdown (200ms)
+    const placementInterval = setInterval(() => {
+      if (this.currentState !== 'waiting' && this.currentState !== 'countdown') {
+        clearInterval(placementInterval);
+        return;
+      }
+      this.tickMockPlacements();
+    }, 200);
   }
 
   /**
@@ -245,8 +261,11 @@ class GameStateManager {
     const flyingInterval = setInterval(() => {
       const elapsed = (Date.now() - this.startTime) / 1000;
       
-      // Calculate multiplier based on time (more gradual growth: 1.0012 base)
+      // Calculate multiplier based on time (more gradual growth)
       this.currentMultiplier = Math.pow(1.0012, elapsed * 100);
+
+      // Handle mock cashouts
+      this.tickMockCashouts(this.currentMultiplier);
 
       // Check if we've reached crash point
       if (this.currentMultiplier >= this.crashMultiplier) {
@@ -391,7 +410,8 @@ class GameStateManager {
       countdown: this.countdownSeconds,
       crashMultiplier: this.currentState === 'crashed' ? this.crashMultiplier : null,
       startTime: this.startTime,
-      activeBets: this.activeBets,
+      activeBets: this.activeBets + this.activeMockBets.length,
+      activeMockBets: this.activeMockBets,
       timestamp: Date.now(),
       nextRound: this.nextRound
         ? {
@@ -403,15 +423,112 @@ class GameStateManager {
     };
   }
 
-  /** Call from server.js when a bet is successfully placed */
-  incrementActiveBets() {
-    this.activeBets++;
-    this.broadcastState();
+  /**
+   * Generate a pool of mock bets for the current round
+   */
+  generateMockBetsForRound(crashMultiplier) {
+    this.mockBetPool = [];
+    this.activeMockBets = [];
+    
+    // Generate 400-600 mock bets
+    const betCount = 400 + Math.floor(Math.random() * 200);
+    
+    for (let i = 0; i < betCount; i++) {
+      const playerName = this.generateRandomPlayerName();
+      const amount = this.getWeightedRandomAmount();
+      
+      // 30% chance of cashing out
+      const willCashOut = Math.random() < 0.35; 
+      let targetMultiplier = null;
+      
+      if (willCashOut) {
+        // Target MUST be below crash multiplier
+        // Weighted towards lower values for realism
+        const maxPossible = Math.min(crashMultiplier - 0.01, 100);
+        if (maxPossible > 1.01) {
+          const r = Math.random();
+          if (r < 0.7) {
+            targetMultiplier = 1.01 + (Math.random() * Math.min(maxPossible - 1.01, 1.5));
+          } else {
+            targetMultiplier = 1.01 + (Math.random() * (maxPossible - 1.01));
+          }
+          targetMultiplier = parseFloat(targetMultiplier.toFixed(2));
+        } else {
+          targetMultiplier = null; // Too close to crash to cash out
+        }
+      }
+
+      this.mockBetPool.push({
+        id: `mock-${Date.now()}-${i}`,
+        player: playerName,
+        amount: amount,
+        targetMultiplier: targetMultiplier,
+        cashedOut: false,
+        multiplier: null,
+        win: null
+      });
+    }
+
+    // Shuffle the pool for random trickle-in
+    this.mockBetPool.sort(() => Math.random() - 0.5);
   }
 
-  /** Call from server.js when a bet is cashed out or crashes */
-  decrementActiveBets() {
-    this.activeBets = Math.max(0, this.activeBets - 1);
+  tickMockPlacements() {
+    if (!this.io || (this.currentState !== 'waiting' && this.currentState !== 'countdown')) return;
+
+    // Place a burst of mock bets
+    const burstSize = 20 + Math.floor(Math.random() * 30);
+    const betsToPlace = this.mockBetPool.splice(0, burstSize);
+
+    betsToPlace.forEach(bet => {
+      this.activeMockBets.push(bet);
+      this.io.emit('fake-bet-placed', bet);
+    });
+  }
+
+  tickMockCashouts(currentMultiplier) {
+    if (!this.io || this.currentState !== 'flying') return;
+
+    this.activeMockBets.forEach(bet => {
+      if (bet.targetMultiplier && !bet.cashedOut && currentMultiplier >= bet.targetMultiplier) {
+        bet.cashedOut = true;
+        bet.multiplier = bet.targetMultiplier;
+        bet.win = parseFloat((bet.amount * bet.multiplier).toFixed(2));
+        this.io.emit('fake-bet-cashed-out', {
+          id: bet.id,
+          multiplier: bet.multiplier,
+          win: bet.win
+        });
+      }
+    });
+  }
+
+  generateRandomPlayerName() {
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+    const first = letters[Math.floor(Math.random() * letters.length)];
+    const last = letters[Math.floor(Math.random() * letters.length)];
+    return `${first}***${last}`;
+  }
+
+  getWeightedRandomAmount() {
+    const ranges = [
+      { min: 10, max: 100, weight: 40 },
+      { min: 100, max: 500, weight: 30 },
+      { min: 500, max: 2000, weight: 20 },
+      { min: 2000, max: 10000, weight: 10 }
+    ];
+    
+    const totalWeight = ranges.reduce((sum, r) => sum + r.weight, 0);
+    let r = Math.random() * totalWeight;
+    let selected = ranges[0];
+    for (const range of ranges) {
+      r -= range.weight;
+      if (r <= 0) {
+        selected = range;
+        break;
+      }
+    }
+    return Math.floor(Math.random() * (selected.max - selected.min) + selected.min);
   }
 
   /** Cleanup method to stop all intervals */
