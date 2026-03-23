@@ -1,7 +1,7 @@
 // Global API configuration
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'
-    : 'https://jetbet-m26i.onrender.com';
+    : 'https://back.jetbetaviator.com';
 
 // Game State Management
 class AviatorGame {
@@ -1142,7 +1142,7 @@ class AviatorGame {
             const isLocal = window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
                 window.location.protocol === 'file:';
-            const apiBase = isLocal ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
+            const apiBase = isLocal ? 'http://localhost:3001' : 'https://back.jetbetaviator.com';
 
             const response = await fetch(`${apiBase}/api/game/bet-history`, {
                 headers: {
@@ -2951,7 +2951,7 @@ async function initializeWebSocket() {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const API_BASE_URL = isLocal
         ? 'http://localhost:3001'
-        : 'https://jetbet-m26i.onrender.com';
+        : 'https://back.jetbetaviator.com';
 
     try {
         console.log('[WebSocket] Connecting to:', API_BASE_URL);
@@ -3065,7 +3065,7 @@ async function checkAuthenticationOnLoad() {
                     const isLocal = window.location.hostname === 'localhost' ||
                         window.location.hostname === '127.0.0.1' ||
                         window.location.protocol === 'file:';
-                    const apiBase = isLocal ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
+                    const apiBase = isLocal ? 'http://localhost:3001' : 'https://back.jetbetaviator.com';
                     console.log('Profile API Base URL:', apiBase);
                     const response = await fetch(`${apiBase}/api/auth/profile`, {
                         headers: {
@@ -3616,7 +3616,7 @@ if (adminBtn) {
         const isLocal = window.location.hostname === 'localhost' ||
             window.location.hostname === '127.0.0.1' ||
             window.location.protocol === 'file:';
-        const adminUrl = isLocal ? 'http://localhost:3001/admin' : 'https://jetbet-m26i.onrender.com/admin';
+        const adminUrl = isLocal ? 'http://localhost:3001/admin' : 'https://back.jetbetaviator.com/admin';
         console.log('Admin URL:', adminUrl);
         window.open(adminUrl, '_blank');
     });

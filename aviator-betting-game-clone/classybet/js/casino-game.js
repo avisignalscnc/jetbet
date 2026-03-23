@@ -21,7 +21,7 @@ class CasinoGame {
 
     getApiBase() {
         const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-        return isLocalhost ? 'http://localhost:3001' : 'https://jetbet-m26i.onrender.com';
+        return isLocalhost ? 'http://localhost:3001' : 'https://back.jetbetaviator.com';
     }
 
     init() {

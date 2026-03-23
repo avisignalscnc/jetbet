@@ -1,7 +1,7 @@
 // JetBet API Service
 class JetBetAPI {
     constructor() {
-        const productionURL = 'https://jetbet-m26i.onrender.com';
+        const productionURL = 'https://back.jetbetaviator.com';
         const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
         this.baseURL = isLocalhost ? 'http://localhost:3001' : productionURL;
         this.apiPath = '/api';
