@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Cache & Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        .status { margin: 20px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <h1>Cache Clear & Test Utility</h1>
+    
+    <div id="status" class="status info">
+        Click the buttons below to clear caches and test the backend connection.
+    </div>
+    
+    <button onclick="clearServiceWorker()">Clear Service Worker</button>
+    <button onclick="clearLocalStorage()">Clear Local Storage</button>
+    <button onclick="clearSessionStorage()">Clear Session Storage</button>
+    <button onclick="testBackendConnection()">Test Backend Connection</button>
+    <button onclick="hardRefresh()">Hard Refresh</button>
+    
+    <script>
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+        
+        async function clearServiceWorker() {
+            try {
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                    }
+                    showStatus('Service Worker cleared successfully!', 'success');
+                } else {
+                    showStatus('Service Worker not supported in this browser', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error clearing Service Worker: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLocalStorage() {
+            try {
+                localStorage.clear();
+                showStatus('Local Storage cleared!', 'success');
+            } catch (error) {
+                showStatus(`Error clearing Local Storage: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearSessionStorage() {
+            try {
+                sessionStorage.clear();
+                showStatus('Session Storage cleared!', 'success');
+            } catch (error) {
+                showStatus(`Error clearing Session Storage: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBackendConnection() {
+            try {
+                const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+                const apiBase = isLocalhost ? 'http://localhost:3001' : 'https://back.jetbetaviator.com';
+                
+                showStatus(`Testing connection to: ${apiBase}`, 'info');
+                
+                const response = await fetch(`${apiBase}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showStatus(`✅ Backend connection successful! Status: ${data.status || 'OK'}`, 'success');
+                } else {
+                    showStatus(`❌ Backend connection failed: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`❌ Backend connection error: ${error.message}`, 'error');
+            }
+        }
+        
+        function hardRefresh() {
+            showStatus('Performing hard refresh...', 'info');
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 1000);
+        }
+        
+        // Show current backend URL being used
+        window.addEventListener('load', () => {
+            const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+            const apiBase = isLocalhost ? 'http://localhost:3001' : 'https://back.jetbetaviator.com';
+            showStatus(`Current backend URL: ${apiBase}`, 'info');
+        });
+    </script>
+</body>
+</html>

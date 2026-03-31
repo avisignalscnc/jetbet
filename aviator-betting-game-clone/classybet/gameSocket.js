@@ -9,8 +9,12 @@ class GameSocketClient {
         this.connected = false;
         this.currentGameState = null;
         this.onStateUpdate = null;
-        this.onFakeBetPlaced = null;
-        this.onFakeBetCashedOut = null;
+        this.onBetPlaced = null;
+        this.onCashoutResult = null;
+        this.onConnectionStatusChange = null;
+        this.pingInterval = null;
+        this.lagThreshold = 2000; // 2 seconds
+        this.lastPingTime = null;
     }
 
     /**
@@ -54,15 +58,25 @@ class GameSocketClient {
         this.socket.on('connect', () => {
             console.log('🔌 Connected to game server');
             this.connected = true;
+            this.emitConnectionStatus('connected');
+            this.startPing();
         });
 
         this.socket.on('disconnect', () => {
             console.log('🔌 Disconnected from game server');
             this.connected = false;
+            this.emitConnectionStatus('disconnected');
+            this.stopPing();
         });
 
         this.socket.on('connect_error', (error) => {
             console.error('🔌 Connection error:', error);
+            this.emitConnectionStatus('disconnected');
+        });
+
+        this.socket.on('reconnecting', () => {
+            console.log('🔌 Reconnecting to game server...');
+            this.emitConnectionStatus('connecting');
         });
 
         // Game state updates
@@ -73,17 +87,40 @@ class GameSocketClient {
             }
         });
 
-        // Fake bet events from server
-        this.socket.on('fake-bet-placed', (bet) => {
-            if (this.onFakeBetPlaced) {
-                this.onFakeBetPlaced(bet);
+        // Bet placement response
+        this.socket.on('bet-placed', (result) => {
+            if (this.onBetPlaced) {
+                this.onBetPlaced(result);
             }
         });
 
-        this.socket.on('fake-bet-cashed-out', (data) => {
-            if (this.onFakeBetCashedOut) {
-                this.onFakeBetCashedOut(data);
+        this.socket.on('bet-error', (error) => {
+            console.error('❌ Bet error:', error);
+            if (this.onBetPlaced) {
+                this.onBetPlaced({ success: false, error: error.error });
             }
+        });
+
+        // Cashout response
+        this.socket.on('cashout-result', (result) => {
+            console.log('💸 Cashout result received:', result);
+            if (this.onCashoutResult) {
+                this.onCashoutResult(result);
+                this.onCashoutResult = null; // Clear callback after use
+            }
+        });
+
+        this.socket.on('cashout-error', (error) => {
+            console.error('❌ Cashout error:', error);
+            if (this.onCashoutResult) {
+                this.onCashoutResult({ success: false, error: error.error });
+                this.onCashoutResult = null; // Clear callback after use
+            }
+        });
+
+        // Ping/Pong for lag detection
+        this.socket.on('pong', () => {
+            this.handlePong();
         });
     }
 
@@ -95,40 +132,13 @@ class GameSocketClient {
             return Promise.reject(new Error('Not connected to game server'));
         }
 
-        return new Promise((resolve, reject) => {
-            // Set timeout to prevent hanging promises
-            const timeout = setTimeout(() => {
-                reject(new Error('Bet placement timeout'));
-            }, 5000);
-
-            // Create a one-time listener for this specific bet
-            const handleBetPlaced = (result) => {
-                clearTimeout(timeout);
-                this.socket.off('bet-placed', handleBetPlaced);
-                this.socket.off('bet-error', handleBetError);
-                console.log('[SOCKET] bet-placed received:', result);
-                resolve(result);
-            };
-
-            const handleBetError = (error) => {
-                clearTimeout(timeout);
-                this.socket.off('bet-placed', handleBetPlaced);
-                this.socket.off('bet-error', handleBetError);
-                console.error('[SOCKET] bet-error received:', error);
-                resolve({ success: false, error: error.error });
-            };
-
-            // Listen for response
-            this.socket.once('bet-placed', handleBetPlaced);
-            this.socket.once('bet-error', handleBetError);
-
-            // Emit bet placement
-            console.log('[SOCKET] Emitting place-bet:', { userId, amount, autoCashout });
+        return new Promise((resolve) => {
+            this.onBetPlaced = resolve;
             this.socket.emit('place-bet', {
                 userId,
                 amount,
                 autoCashout,
-                token
+                token  // Add token for authentication
             });
         });
     }
@@ -141,28 +151,8 @@ class GameSocketClient {
             return Promise.reject(new Error('Not connected to game server'));
         }
 
-        return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Cashout timeout')), 5000);
-            
-            const handleCashoutResult = (result) => {
-                clearTimeout(timeout);
-                this.socket.off('cashout-result', handleCashoutResult);
-                this.socket.off('cashout-error', handleCashoutError);
-                resolve(result);
-            };
-            
-            const handleCashoutError = (error) => {
-                clearTimeout(timeout);
-                this.socket.off('cashout-result', handleCashoutResult);
-                this.socket.off('cashout-error', handleCashoutError);
-                resolve({ success: false, error: error.error || 'Cashout failed' });
-            };
-            
-            this.socket.once('cashout-result', handleCashoutResult);
-            this.socket.once('cashout-error', handleCashoutError);
-            
-            // Emit cashout
-            console.log('[SOCKET] Emitting cashout:', { userId, betId, multiplier });
+        return new Promise((resolve) => {
+            this.onCashoutResult = resolve;
             this.socket.emit('cashout', { userId, betId, multiplier });
         });
     }
@@ -181,6 +171,51 @@ class GameSocketClient {
         if (this.socket) {
             this.socket.disconnect();
             this.connected = false;
+            this.stopPing();
+        }
+    }
+
+    /**
+     * Emit connection status change
+     */
+    emitConnectionStatus(status) {
+        if (this.onConnectionStatusChange) {
+            this.onConnectionStatusChange(status);
+        }
+    }
+
+    /**
+     * Start ping interval to detect lag
+     */
+    startPing() {
+        this.stopPing();
+        this.pingInterval = setInterval(() => {
+            if (this.connected) {
+                this.lastPingTime = Date.now();
+                this.socket.emit('ping');
+            }
+        }, 5000);
+    }
+
+    /**
+     * Stop ping interval
+     */
+    stopPing() {
+        if (this.pingInterval) {
+            clearInterval(this.pingInterval);
+            this.pingInterval = null;
+        }
+    }
+
+    /**
+     * Handle pong response
+     */
+    handlePong() {
+        if (this.lastPingTime) {
+            const lag = Date.now() - this.lastPingTime;
+            if (lag > this.lagThreshold) {
+                this.emitConnectionStatus('connecting'); // Show as lagging
+            }
         }
     }
 }

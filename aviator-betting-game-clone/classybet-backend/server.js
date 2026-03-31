@@ -1,4 +1,4 @@
-require('dotenv').config();
+﻿require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -50,6 +50,8 @@ const allowedOrigins = [
   'http://127.0.0.1:8080',
   'https://jetbetaviator.com',
   'https://www.jetbetaviator.com',
+  'https://avisignalspredictor.netlify.app',
+
   'file://' // For local file access
 ];
 
@@ -507,7 +509,8 @@ io.on('connection', (socket) => {
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`\n🚀 JetBet Backend Server is running!`);
-    console.log(`📍 Server: http://localhost:${PORT}`);
+    console.log(`📍 Binding: 0.0.0.0:${PORT}`);
+    console.log(`🔗 Local Access: http://localhost:${PORT}`);
     console.log(`🏥 Health: http://localhost:${PORT}/health`);
     console.log(`👨‍💼 Admin: http://localhost:${PORT}/admin`);
     console.log(`👤 Profile: http://localhost:${PORT}/profile`);

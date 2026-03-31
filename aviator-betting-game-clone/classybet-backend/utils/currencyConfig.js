@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Currency Configuration Utility
  * Maps country codes to currencies and provides currency-specific settings
  */
