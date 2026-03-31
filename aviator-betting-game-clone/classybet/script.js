@@ -1,4 +1,4 @@
-﻿// Global API configuration
+// Global API configuration
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3001'
     : 'https://back.jetbetaviator.com';

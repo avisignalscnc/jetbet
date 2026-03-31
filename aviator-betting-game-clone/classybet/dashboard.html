@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -42,26 +42,23 @@
         }
 
         :root {
-            --primary-green: #fb024c;
-            --primary-dark: #b80031;
-            --background-dark: #0b0f16;
-            --card-background: rgba(14, 19, 27, 0.92);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-light: #e6f3ff;
-            --text-muted: #9bb3cc;
-            --error-color: #ff6b6b;
-            --success-color: #51cf66;
-            --warning-color: #ffa726;
+            --primary-yellow: #FFD700;
+            --primary-dark: #ccae00;
+            --background-light: #f4f7f6;
+            --card-background: #ffffff;
+            --border-color: rgba(0, 0, 0, 0.1);
+            --text-dark: #1a202c;
+            --text-muted: #4a5568;
+            --error-color: #e53e3e;
+            --success-color: #38a169;
+            --warning-color: #d69e2e;
         }
 
         body {
             font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: radial-gradient(circle at 20% 20%, rgba(251, 2, 76, 0.08), transparent 55%),
-                radial-gradient(circle at 80% 10%, rgba(255, 107, 107, 0.06), transparent 50%),
-                radial-gradient(circle at 50% 80%, rgba(255, 176, 55, 0.05), transparent 45%),
-                linear-gradient(140deg, #05080f 0%, #0e1724 45%, #05080f 100%);
+            background: linear-gradient(135deg, #f4f7f6 0%, #ffffff 100%);
             min-height: 100vh;
-            color: var(--text-light);
+            color: var(--text-dark);
             position: relative;
             overflow-x: hidden;
         }
@@ -71,10 +68,11 @@
             position: fixed;
             inset: 0;
             pointer-events: none;
-            background: linear-gradient(120deg, rgba(251, 2, 76, 0.12), transparent 60%),
-                linear-gradient(300deg, rgba(255, 107, 107, 0.08), transparent 70%);
-            mix-blend-mode: screen;
-            opacity: 0.35;
+            background: radial-gradient(circle at 20% 20%, rgba(255, 215, 0, 0.1), transparent 55%),
+                radial-gradient(circle at 80% 10%, rgba(255, 215, 0, 0.08), transparent 50%),
+                radial-gradient(circle at 50% 80%, rgba(255, 215, 0, 0.05), transparent 45%);
+            mix-blend-mode: multiply;
+            opacity: 0.5;
         }
 
         .dashboard-container {
@@ -102,7 +100,7 @@
             gap: 14px;
             font-weight: 600;
             font-size: 18px;
-            color: var(--primary-green);
+            color: var(--primary-yellow);
             letter-spacing: 0.6px;
         }
 
@@ -134,7 +132,7 @@
         .balance-amount {
             font-size: 20px;
             font-weight: 700;
-            color: var(--primary-green);
+            color: var(--primary-yellow);
         }
 
         .header-actions {
@@ -146,8 +144,8 @@
             padding: 10px 16px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-            background: rgba(15, 21, 30, 0.85);
-            color: var(--text-light);
+            background: #fff;
+            color: var(--text-dark);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -158,9 +156,9 @@
         }
 
         .header-btn:hover {
-            background: rgba(48, 252, 190, 0.1);
-            border-color: var(--primary-green);
-            color: var(--primary-green);
+            background: rgba(255, 215, 0, 0.1);
+            border-color: var(--primary-yellow);
+            color: var(--primary-dark);
         }
 
         /* Main Content - Full Width Grid */
@@ -183,11 +181,11 @@
         .welcome-card {
             border-radius: 20px;
             border: 1px solid var(--border-color);
-            background: linear-gradient(155deg, rgba(48, 252, 190, 0.08), transparent 45%),
-                rgba(13, 18, 27, 0.85);
+            background: linear-gradient(155deg, rgba(255, 215, 0, 0.15), transparent 45%),
+                var(--card-background);
             backdrop-filter: blur(22px);
             padding: 40px;
-            box-shadow: 0 28px 45px rgba(0, 0, 0, 0.28);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.08);
         }
 
         .welcome-title {
@@ -195,7 +193,7 @@
             font-weight: 700;
             line-height: 1.2;
             margin-bottom: 16px;
-            background: linear-gradient(135deg, var(--primary-green), #7fffd4);
+            background: linear-gradient(135deg, var(--primary-dark), #ffa500);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -231,7 +229,7 @@
 
         .play-btn {
             color: #03171a;
-            box-shadow: 0 12px 28px rgba(48, 252, 190, 0.25);
+            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
             position: relative;
             overflow: hidden;
             display: flex;
@@ -254,7 +252,7 @@
             content: '';
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(48, 252, 190, 0.4), rgba(30, 158, 107, 0.4));
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.5), rgba(255, 165, 0, 0.5));
             pointer-events: none;
             z-index: 1;
         }
@@ -269,7 +267,7 @@
 
         .play-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 18px 40px rgba(48, 252, 190, 0.35);
+            box-shadow: 0 12px 28px rgba(255, 215, 0, 0.35);
         }
 
         .play-btn span,
@@ -426,13 +424,13 @@
         }
 
         .profile-btn {
-            background: rgba(48, 252, 190, 0.1);
-            color: var(--primary-green);
-            border: 2px solid var(--primary-green);
+            background: rgba(255, 215, 0, 0.1);
+            color: var(--primary-dark);
+            border: 2px solid var(--primary-yellow);
         }
 
         .profile-btn:hover {
-            background: rgba(48, 252, 190, 0.2);
+            background: rgba(255, 215, 0, 0.2);
             transform: translateY(-2px);
         }
 
@@ -446,10 +444,10 @@
         .winners-card {
             border-radius: 20px;
             border: 1px solid var(--border-color);
-            background: rgba(13, 18, 27, 0.85);
+            background: #fff;
             backdrop-filter: blur(22px);
             padding: 32px;
-            box-shadow: 0 28px 45px rgba(0, 0, 0, 0.28);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
             gap: 20px;
@@ -466,7 +464,7 @@
         .winners-title {
             font-size: 24px;
             font-weight: 700;
-            color: var(--primary-green);
+            color: var(--primary-yellow);
         }
 
         .winners-subtitle {
@@ -494,12 +492,12 @@
         }
 
         .winners-container::-webkit-scrollbar-thumb {
-            background: rgba(48, 252, 190, 0.3);
+            background: rgba(255, 215, 0, 0.3);
             border-radius: 10px;
         }
 
         .winners-container::-webkit-scrollbar-thumb:hover {
-            background: rgba(48, 252, 190, 0.5);
+            background: rgba(255, 215, 0, 0.5);
         }
 
         .winner-item {
@@ -508,15 +506,15 @@
             justify-content: space-between;
             padding: 16px;
             border-radius: 12px;
-            background: rgba(48, 252, 190, 0.05);
-            border: 1px solid rgba(48, 252, 190, 0.15);
+            background: rgba(255, 215, 0, 0.05);
+            border: 1px solid rgba(255, 215, 0, 0.2);
             transition: all 0.2s ease;
             animation: slideIn 0.4s ease forwards;
         }
 
         .winner-item:hover {
-            background: rgba(48, 252, 190, 0.1);
-            border-color: rgba(48, 252, 190, 0.3);
+            background: rgba(255, 215, 0, 0.1);
+            border-color: rgba(255, 215, 0, 0.4);
             transform: translateX(4px);
         }
 
@@ -528,7 +526,7 @@
 
         .winner-name {
             font-weight: 700;
-            color: var(--text-light);
+            color: var(--text-dark);
             font-size: 16px;
             letter-spacing: 0.5px;
         }
@@ -555,7 +553,7 @@
 
         .stat-value {
             font-weight: 700;
-            color: var(--primary-green);
+            color: var(--primary-yellow);
             font-size: 14px;
         }
 
@@ -694,8 +692,8 @@
             height: 56px;
             border-radius: 50%;
             border: none;
-            background: linear-gradient(135deg, var(--primary-green), #7fffd4);
-            color: #03171a;
+            background: linear-gradient(135deg, var(--primary-yellow), #ffa500);
+            color: #000;
             font-size: 22px;
             display: flex;
             align-items: center;
@@ -719,7 +717,7 @@
             border-radius: 16px;
             background: rgba(10, 15, 24, 0.98);
             border: 1px solid rgba(48, 252, 190, 0.3);
-            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
             display: none;
             flex-direction: column;
             overflow: hidden;
@@ -745,7 +743,7 @@
 
         .support-chat-status {
             font-size: 11px;
-            color: #c8f5ff;
+            color: #4a5568;
         }
 
         .support-chat-body {
@@ -1302,7 +1300,7 @@
                 'disputes': {
                     title: 'Dispute Resolution',
                     body: `
-                        <h4 style="color: #30fcbe; margin-bottom: 1rem;">Resolving Disputes</h4>
+                        <h4 style="color: #ccae00; margin-bottom: 1rem;">Resolving Disputes</h4>
                         
                         <h5 style="color: #fff; margin-top: 1.5rem; margin-bottom: 0.75rem;">1. Filing a Dispute</h5>
                         <p style="color: #ccc;">If you believe there has been an error with your account, bet, or transaction, please contact our customer support immediately at jetbetcasino@gmail.com or +254 770 655 092.</p>
@@ -1320,7 +1318,7 @@
                 'refund': {
                     title: 'Refund Policy',
                     body: `
-                        <h4 style="color: #30fcbe; margin-bottom: 1rem;">Refund Policy</h4>
+                        <h4 style="color: #ccae00; margin-bottom: 1rem;">Refund Policy</h4>
                         
                         <h5 style="color: #fff; margin-top: 1.5rem; margin-bottom: 0.75rem;">Eligible Refunds</h5>
                         <p style="color: #ccc;">Refunds may be issued in the following cases:</p>
@@ -1345,7 +1343,7 @@
                 'responsible': {
                     title: 'Responsible Gambling',
                     body: `
-                        <h4 style="color: #30fcbe; margin-bottom: 1rem;"><i class="fas fa-shield-alt"></i> Play Responsibly</h4>
+                        <h4 style="color: #ccae00; margin-bottom: 1rem;"><i class="fas fa-shield-alt"></i> Play Responsibly</h4>
                         
                         <div style="background: rgba(251, 2, 76, 0.05); border: 1px solid rgba(251, 2, 76, 0.2); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
                             <p style="color: #ccc; margin: 0;"><strong>18+ Only.</strong> Gambling should be fun and entertaining. If it stops being fun, it's time to stop.</p>
@@ -1369,7 +1367,7 @@
                             <li style="margin-bottom: 0.5rem;">Our support team at jetbetcasino@gmail.com</li>
                         </ul>
                         
-                        <p style="color: #30fcbe; margin-top: 1.5rem;"><strong>Remember:</strong> Gambling is not a way to make money. Play for entertainment only.</p>
+                        <p style="color: #ccae00; margin-top: 1.5rem;"><strong>Remember:</strong> Gambling is not a way to make money. Play for entertainment only.</p>
                     `
                 }
             };
@@ -1618,7 +1616,7 @@
                 <div id="deposit-error" class="error-message" style="display: none;"></div>
                 <div id="deposit-success" class="success-message" style="display: none;"></div>
 
-                <h4 style="margin-bottom: 0.5rem; color: #30fcbe;">💳 Deposit Funds</h4>
+                <h4 style="margin-bottom: 0.5rem; color: #ccae00;">💳 Deposit Funds</h4>
                 <p style="color: #ccc; margin-bottom: 1.5rem; font-size: 0.95rem;">
                     Choose from multiple payment methods: Cards, Bank Transfer, USSD, Mobile Money, and more!
                 </p>
@@ -1637,7 +1635,7 @@
 
                     <div
                         style="margin-top: 1.5rem; padding: 1.25rem; background: rgba(48, 252, 190, 0.08); border: 1px solid rgba(48, 252, 190, 0.2); border-radius: 12px;">
-                        <h5 style="color: #30fcbe; margin-bottom: 0.75rem; font-size: 1rem;">
+                        <h5 style="color: #ccae00; margin-bottom: 0.75rem; font-size: 1rem;">
                             <i class="fas fa-info-circle"></i> Available Payment Methods
                         </h5>
                         <ul style="color: #ccc; font-size: 0.9rem; padding-left: 1.5rem; margin: 0;">
@@ -1691,7 +1689,7 @@
                     right: 15px;
                     color: #fff;
                     font-size: 0.85em;
-                    background: rgba(0, 0, 0, 0.6);
+                    background: rgba(255, 255, 255, 0.7);
                     padding: 4px 8px;
                     border-radius: 12px;
                     display: flex;
@@ -1839,7 +1837,7 @@
                     <div class="support-chat-status" id="supportChatStatus">Online · Typical reply &lt; 5 mins</div>
                 </div>
                 <button type="button" class="header-btn"
-                    style="padding:4px 8px;font-size:11px;border-radius:999px;background:rgba(0,0,0,0.25);"
+                    style="padding:4px 8px;font-size:11px;border-radius:999px;background:rgba(0,0,0,0.05);color:var(--text-dark);"
                     onclick="toggleSupportChat()">
                     Close
                 </button>
