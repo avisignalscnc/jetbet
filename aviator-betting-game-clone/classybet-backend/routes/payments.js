@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const axios = require('axios');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
@@ -17,8 +17,8 @@ router.post('/stk-push',
   authenticateToken,
   [
     body('amount').isNumeric().custom(value => {
-      if (value < 999 || value > 150000) {
-        throw new Error('Amount must be between KES 999 and KES 150,000');
+      if (value < 349 || value > 150000) {
+        throw new Error('Amount must be between KES 349 and KES 150,000');
       }
       return true;
     }),
