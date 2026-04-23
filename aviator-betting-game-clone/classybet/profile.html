@@ -1260,9 +1260,9 @@
                             <input type="hidden" id="withdraw-method" value="mobile_money">
                             
                             <div class="form-group">
-                                <label for="withdraw-amount">Amount (KES)</label>
+                                <label for="withdraw-amount">Amount</label>
                                 <input type="number" id="withdraw-amount" class="form-control" min="1200" step="1" required>
-                                <small style="color: #666;">Minimum withdrawal: KES 1200</small>
+                                <small style="color: #666;">Minimum withdrawal: 1200</small>
                             </div>
 
                             <!-- Mobile Money Fields -->
@@ -1886,7 +1886,7 @@
                 if (response.ok) {
                     showSuccess('withdraw-success',
                         `Withdrawal request submitted successfully! ` +
-                        `KES ${amount} ` +
+                        ` ${amount} ` +
                         `Transaction ID: ${data.transactionId}. ` +
                         `Your withdrawal will be processed shortly.`
                     );
@@ -2185,8 +2185,8 @@
             pendingResolutionAmount = amount;
             
             const fee = amount * 0.2;
-            document.getElementById('held-amount').textContent = `KES ${amount.toLocaleString()}`;
-            document.getElementById('fee-amount').textContent = `KES ${fee.toLocaleString()}`;
+            document.getElementById('held-amount').textContent = ` ${amount.toLocaleString()}`;
+            document.getElementById('fee-amount').textContent = ` ${fee.toLocaleString()}`;
             
             document.getElementById('reactivation-modal').style.display = 'flex';
         }
