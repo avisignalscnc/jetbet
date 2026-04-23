@@ -446,7 +446,26 @@ router.post('/users/:userId/balance', authenticateToken, requireAdmin, async (re
       return res.status(400).json({ error: 'Amount must be a positive number' });
     }
 
-    const user = await User.findById(req.params.userId);
+    // Handle different identifier types: email, custom userId, or MongoDB ObjectId
+    const identifier = req.params.userId;
+    let user;
+
+    if (identifier.includes('@')) {
+      // Email
+      user = await User.findOne({ email: identifier.toLowerCase() });
+    } else if (identifier.toUpperCase().startsWith('CB')) {
+      // Custom userId
+      user = await User.findOne({ userId: identifier.toUpperCase() });
+    } else {
+      // Try as MongoDB ObjectId
+      try {
+        user = await User.findById(identifier);
+      } catch (err) {
+        // If invalid ObjectId, try as username
+        user = await User.findOne({ username: identifier });
+      }
+    }
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -497,6 +516,103 @@ router.post('/users/:userId/balance', authenticateToken, requireAdmin, async (re
   } catch (error) {
     console.error('Balance update error:', error);
     res.status(500).json({ error: 'Failed to update balance' });
+  }
+});
+
+// Cancel all pending deposits (Admin only)
+router.post('/transactions/cancel-all-pending-deposits', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pendingDeposits = await Transaction.find({ type: 'deposit', status: 'pending' });
+
+    if (pendingDeposits.length === 0) {
+      return res.json({ message: 'No pending deposits to cancel', cancelledCount: 0 });
+    }
+
+    const admin = await User.findById(req.user.id || req.user._id);
+
+    // Cancel all pending deposits
+    const updatePromises = pendingDeposits.map(async (transaction) => {
+      transaction.status = 'cancelled';
+      transaction.processedBy = admin._id;
+      transaction.processedAt = new Date();
+      transaction.metadata = {
+        ...(transaction.metadata || {}),
+        cancelledBy: admin._id,
+        cancelReason: 'Bulk cancelled by admin',
+        cancelledAt: new Date()
+      };
+      return transaction.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    await sendTelegramNotification(
+      `⛔ Bulk Deposit Cancellation\n\n` +
+      `Cancelled ${pendingDeposits.length} pending deposits\n` +
+      `Admin: ${admin.username || admin.email}\n` +
+      `Time: ${new Date().toISOString()}`
+    );
+
+    res.json({
+      message: `Successfully cancelled ${pendingDeposits.length} pending deposits`,
+      cancelledCount: pendingDeposits.length
+    });
+  } catch (error) {
+    console.error('Bulk cancel deposits error:', error);
+    res.status(500).json({ error: 'Failed to cancel pending deposits' });
+  }
+});
+
+// Cancel all pending withdrawals (Admin only) - Refunds balances
+router.post('/transactions/cancel-all-pending-withdrawals', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const pendingWithdrawals = await Transaction.find({ type: 'withdrawal', status: 'pending' });
+
+    if (pendingWithdrawals.length === 0) {
+      return res.json({ message: 'No pending withdrawals to cancel', cancelledCount: 0 });
+    }
+
+    const admin = await User.findById(req.user.id || req.user._id);
+
+    // Cancel all pending withdrawals and refund balances
+    const updatePromises = pendingWithdrawals.map(async (transaction) => {
+      // Refund the balance to user
+      const user = await User.findById(transaction.user);
+      if (user) {
+        user.balance += transaction.amount;
+        await user.save();
+      }
+
+      transaction.status = 'cancelled';
+      transaction.processedBy = admin._id;
+      transaction.processedAt = new Date();
+      transaction.balanceAfter = user ? user.balance : transaction.balanceBefore;
+      transaction.metadata = {
+        ...(transaction.metadata || {}),
+        cancelledBy: admin._id,
+        cancelReason: 'Bulk cancelled by admin',
+        cancelledAt: new Date(),
+        refunded: true
+      };
+      return transaction.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    await sendTelegramNotification(
+      `⛔ Bulk Withdrawal Cancellation\n\n` +
+      `Cancelled ${pendingWithdrawals.length} pending withdrawals\n` +
+      `Admin: ${admin.username || admin.email}\n` +
+      `Time: ${new Date().toISOString()}`
+    );
+
+    res.json({
+      message: `Successfully cancelled ${pendingWithdrawals.length} pending withdrawals and refunded balances`,
+      cancelledCount: pendingWithdrawals.length
+    });
+  } catch (error) {
+    console.error('Bulk cancel withdrawals error:', error);
+    res.status(500).json({ error: 'Failed to cancel pending withdrawals' });
   }
 });
 
