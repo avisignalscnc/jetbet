@@ -994,12 +994,12 @@
                     <div class="username" id="profile-username">Username</div>
                     <div id="profile-email" style="color: #ccc;">email@example.com</div>
                     <div class="balance-display" style="margin: 1rem 0;">
-                        Balance: KES <span id="profile-balance">0.00</span>
+                        Balance:<span id="profile-balance">0.00</span>
                     </div>
 
                     <div class="user-stats">
                         <div class="stat-item">
-                            <div class="stat-number" id="biggest-win">KES 0.00</div>
+                            <div class="stat-number" id="biggest-win"> 0.00</div>
                             <div class="stat-label">Biggest Win</div>
                         </div>
                         <div class="stat-item">
@@ -1022,7 +1022,7 @@
                             <div class="menu-item-title">Affiliate Program</div>
                             <div class="menu-item-description">Earn bonuses when friends register and get paid 15% of
                                 their wins.</div>
-                            <div class="menu-item-description">Get a 100KES Free Bet every time you refer someone.</div>
+                            <div class="menu-item-description">Get a 100 Free Bet every time you refer someone.</div>
                         </div>
                         <i class="fas fa-chevron-down menu-item-arrow" id="affiliate-toggle-icon"></i>
                     </div>
@@ -1036,7 +1036,7 @@
                                     Choose a code that is easy to remember.
                                 </p>
                                 <p>Get a 15% win bonus for your friend's winnings</p>
-                                <p>Get a 100KES Free Bet every time you refer someone</p>
+                                <p>Get a 100 Free Bet every time you refer someone</p>
                                 <div id="affiliate-join-success" class="success" style="display: none;"></div>
                                 <div id="affiliate-join-error" class="error" style="display: none;"></div>
                                 <form id="affiliate-join-form">
@@ -1194,7 +1194,7 @@
 
                         <form id="deposit-form" onsubmit="handlePaystackDeposit(event)">
                             <div class="form-group">
-                                <label for="deposit-amount">Amount (<span id="currency-code">KES</span>)</label>
+                                <label for="deposit-amount">Amount (<span id="currency-code"></span>)</label>
                                 <input type="number" id="deposit-amount" class="form-control" min="349" max="150000"
                                     step="1" required>
                                 <small style="color: #666;">
@@ -1244,7 +1244,7 @@
 
                         <div style="margin-bottom: 2rem;">
                             <label style="display: block; margin-bottom: 1rem; color: #ccae00; font-weight: 600;">Select Payout Method</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
                                 <div id="method-mobile" class="card" style="padding: 1rem; text-align: center; cursor: pointer; border: 2px solid #ccae00; background: rgba(204, 174, 0, 0.1);" onclick="selectPayoutMethod('mobile_money')">
                                     <i class="fas fa-mobile-alt" style="font-size: 1.5rem; color: #ccae00; margin-bottom: 0.5rem;"></i>
                                     <div style="font-weight: 600;">Mobile Money</div>
@@ -1252,6 +1252,10 @@
                                 <div id="method-bank" class="card" style="padding: 1rem; text-align: center; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);" onclick="selectPayoutMethod('bank_transfer')">
                                     <i class="fas fa-university" style="font-size: 1.5rem; color: #666; margin-bottom: 0.5rem;"></i>
                                     <div style="font-weight: 600; color: #666;">Bank Transfer</div>
+                                </div>
+                                <div id="method-crypto" class="card" style="padding: 1rem; text-align: center; cursor: pointer; border: 1px solid rgba(0,0,0,0.1);" onclick="selectPayoutMethod('crypto')">
+                                    <i class="fab fa-bitcoin" style="font-size: 1.5rem; color: #666; margin-bottom: 0.5rem;"></i>
+                                    <div style="font-weight: 600; color: #666;">Cryptocurrency</div>
                                 </div>
                             </div>
                         </div>
@@ -1286,6 +1290,28 @@
                                 <div class="form-group">
                                     <label for="withdraw-account-name">Account Name</label>
                                     <input type="text" id="withdraw-account-name" class="form-control" placeholder="Enter account name">
+                                </div>
+                            </div>
+
+                            <!-- Cryptocurrency Fields -->
+                            <div id="fields-crypto" style="display: none;">
+                                <div class="form-group">
+                                    <label for="withdraw-crypto-wallet">Cryptocurrency Wallet Address</label>
+                                    <input type="text" id="withdraw-crypto-wallet" class="form-control" placeholder="0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0" required>
+                                    <small style="color: #666; font-size: 0.85rem;">
+                                        <i class="fas fa-info-circle"></i> Enter your USDT (ERC20) wallet address. Make sure it's correct as transactions cannot be reversed.
+                                    </small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="withdraw-crypto-network">Network</label>
+                                    <select id="withdraw-crypto-network" class="form-control" required>
+                                        <option value="ethereum">Ethereum (ERC20)</option>
+                                        <option value="bsc">BNB Smart Chain (BEP20)</option>
+                                        <option value="polygon">Polygon (MATIC)</option>
+                                    </select>
+                                    <small style="color: #666; font-size: 0.85rem;">
+                                        <i class="fas fa-exclamation-triangle"></i> Select the correct network for your wallet address
+                                    </small>
                                 </div>
                             </div>
 
@@ -1793,35 +1819,43 @@
             document.getElementById('withdraw-method').value = method;
             const mobileBtn = document.getElementById('method-mobile');
             const bankBtn = document.getElementById('method-bank');
+            const cryptoBtn = document.getElementById('method-crypto');
             const mobileFields = document.getElementById('fields-mobile');
             const bankFields = document.getElementById('fields-bank');
+            const cryptoFields = document.getElementById('fields-crypto');
 
+            // Reset all buttons
+            [mobileBtn, bankBtn, cryptoBtn].forEach(btn => {
+                btn.style.border = '1px solid rgba(0,0,0,0.1)';
+                btn.style.background = 'transparent';
+                btn.querySelector('i').style.color = '#666';
+                btn.querySelector('div').style.color = '#666';
+            });
+
+            // Hide all fields
+            mobileFields.style.display = 'none';
+            bankFields.style.display = 'none';
+            cryptoFields.style.display = 'none';
+
+            // Highlight selected method and show corresponding fields
             if (method === 'mobile_money') {
                 mobileBtn.style.border = '2px solid #ccae00';
                 mobileBtn.style.background = 'rgba(204, 174, 0, 0.1)';
                 mobileBtn.querySelector('i').style.color = '#ccae00';
                 mobileBtn.querySelector('div').style.color = '#333';
-
-                bankBtn.style.border = '1px solid rgba(0,0,0,0.1)';
-                bankBtn.style.background = 'transparent';
-                bankBtn.querySelector('i').style.color = '#666';
-                bankBtn.querySelector('div').style.color = '#666';
-
                 mobileFields.style.display = 'block';
-                bankFields.style.display = 'none';
-            } else {
+            } else if (method === 'bank_transfer') {
                 bankBtn.style.border = '2px solid #ccae00';
                 bankBtn.style.background = 'rgba(204, 174, 0, 0.1)';
                 bankBtn.querySelector('i').style.color = '#ccae00';
                 bankBtn.querySelector('div').style.color = '#333';
-
-                mobileBtn.style.border = '1px solid rgba(0,0,0,0.1)';
-                mobileBtn.style.background = 'transparent';
-                mobileBtn.querySelector('i').style.color = '#666';
-                mobileBtn.querySelector('div').style.color = '#666';
-
-                mobileFields.style.display = 'none';
                 bankFields.style.display = 'block';
+            } else if (method === 'crypto') {
+                cryptoBtn.style.border = '2px solid #ccae00';
+                cryptoBtn.style.background = 'rgba(204, 174, 0, 0.1)';
+                cryptoBtn.querySelector('i').style.color = '#ccae00';
+                cryptoBtn.querySelector('div').style.color = '#333';
+                cryptoFields.style.display = 'block';
             }
         }
 
@@ -1847,7 +1881,7 @@
                     return;
                 }
                 payoutDetails = { phoneNumber };
-            } else {
+            } else if (method === 'bank_transfer') {
                 const bankName = document.getElementById('withdraw-bank-name').value;
                 const accountNumber = document.getElementById('withdraw-account-number').value;
                 const accountName = document.getElementById('withdraw-account-name').value;
@@ -1857,11 +1891,34 @@
                     return;
                 }
                 payoutDetails = { bankName, accountNumber, accountName };
+            } else if (method === 'crypto') {
+                const walletAddress = document.getElementById('withdraw-crypto-wallet').value;
+                const network = document.getElementById('withdraw-crypto-network').value;
+
+                if (!walletAddress) {
+                    showError('withdraw-error', 'Wallet address is required');
+                    return;
+                }
+
+                // Basic wallet address validation
+                if (network === 'ethereum' || network === 'bsc') {
+                    if (!walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+                        showError('withdraw-error', 'Invalid wallet address format. Must be a valid Ethereum/BSC address');
+                        return;
+                    }
+                } else if (network === 'polygon') {
+                    if (!walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+                        showError('withdraw-error', 'Invalid wallet address format. Must be a valid Polygon address');
+                        return;
+                    }
+                }
+
+                payoutDetails = { walletAddress, network, cryptocurrency: 'USDT' };
             }
 
             // Validate amount
             if (amount < 1200 || amount > 150000) {
-                showError('withdraw-error', 'Amount must be between KES 1200 and KES 150,000');
+                showError('withdraw-error', 'Amount must be between 1200 and 150,000');
                 return;
             }
 
